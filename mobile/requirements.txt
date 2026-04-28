@@ -1,0 +1,3 @@
+flet
+PyMuPDF
+google-generativeai
