@@ -13,7 +13,8 @@ DB_FILE = DATA_DIR / "books.json"
 
 # Gemini model can be changed later without touching business logic.
 GEMINI_MODEL = "gemini-1.5-flash"
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+DEFAULT_GEMINI_API_KEY = "AIzaSyDwZgHOJpShJKL-LiUeSLaagjoZE6ej4Uw"
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", DEFAULT_GEMINI_API_KEY)
 
 # Approximate character limit for one Gemini request input section.
 CHUNK_SIZE = 12_000

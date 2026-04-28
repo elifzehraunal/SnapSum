@@ -12,6 +12,8 @@ from pathlib import Path
 import sys
 from typing import Any
 
+from app.config import GEMINI_API_KEY
+
 
 @dataclass
 class SummaryResult:
@@ -36,7 +38,7 @@ class BackendAdapter:
             sys.path.append(str(repo_root))
 
         cache_path = repo_root / "backend" / "database" / "summary_cache.json"
-        api_key = os.getenv("GEMINI_API_KEY", "")
+        api_key = os.getenv("GEMINI_API_KEY", GEMINI_API_KEY)
 
         try:
             from backend.backend_manager import BackendManager

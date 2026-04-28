@@ -36,7 +36,6 @@ def main(page: ft.Page) -> None:
     page.theme_mode = ft.ThemeMode.LIGHT
     page.theme = app_theme()
     page.padding = 16
-    page.bgcolor = ft.Colors.SLATE_50
     page.window.width = 430
     page.window.height = 880
 
@@ -44,11 +43,17 @@ def main(page: ft.Page) -> None:
     repository = BookRepository()
     repository.seed_general_books(build_seed_books())
     backend_adapter = BackendAdapter()
+    file_picker = ft.FilePicker()
+    page.services.append(file_picker)
 
     general_list = ft.ListView(expand=True, spacing=8)
     personal_list = ft.ListView(expand=True, spacing=8)
-    upload_status = ft.Text("Henüz dosya seçilmedi.", color=ft.Colors.GREY_700)
+    upload_status = ft.Text("Henüz dosya seçilmedi.")
     selected_file = {"path": None}
+    file_path_input = ft.TextField(
+        label="PDF dosya yolu",
+        hint_text=r"Ornek: C:\Users\ibrah\Documents\kitap.pdf",
+    )
 
     def open_book(book: Book) -> None:
         dialog = build_book_dialog(page, book, backend_adapter, repository.update_summary)
@@ -75,17 +80,48 @@ def main(page: ft.Page) -> None:
         personal_list.controls = [build_book_tile(book) for book in personal_books]
         page.update()
 
-    def pick_result(event: ft.FilePickerResultEvent) -> None:
-        if not event.files:
-            upload_status.value = "Dosya seçimi iptal edildi."
+    def apply_input_path(_: ft.ControlEvent) -> None:
+        path_value = (file_path_input.value or "").strip().strip('"')
+        if not path_value:
+            upload_status.value = "Lutfen PDF dosya yolunu girin."
             selected_file["path"] = None
         else:
-            selected_file["path"] = event.files[0].path
-            upload_status.value = f"Seçilen dosya: {Path(selected_file['path']).name}"
+            selected_file["path"] = path_value
+            upload_status.value = f"Secilen dosya: {Path(path_value).name}"
         page.update()
 
-    file_picker = ft.FilePicker(on_result=pick_result)
-    page.overlay.append(file_picker)
+    async def pick_file(_: ft.ControlEvent) -> None:
+        files = await file_picker.pick_files(
+            allow_multiple=False,
+            allowed_extensions=["pdf"],
+            with_data=True,
+        )
+        if not files:
+            upload_status.value = "Dosya secimi iptal edildi."
+            selected_file["path"] = None
+            page.update()
+            return
+
+        picked = files[0]
+        if picked.path:
+            selected_file["path"] = picked.path
+            file_path_input.value = picked.path
+            upload_status.value = f"Secilen dosya: {picked.name}"
+            page.update()
+            return
+
+        # Web gibi ortamlarda path gelmeyebilir; bytes ile yerel kopya olustururuz.
+        file_bytes = getattr(picked, "bytes", None)
+        if file_bytes:
+            target = UPLOADS_DIR / f"{Path(picked.name).stem}_{uuid.uuid4().hex[:8]}.pdf"
+            target.write_bytes(file_bytes)
+            selected_file["path"] = str(target)
+            file_path_input.value = str(target)
+            upload_status.value = f"Secilen dosya: {picked.name}"
+        else:
+            upload_status.value = "Dosya okunamadi. Lutfen tekrar deneyin."
+            selected_file["path"] = None
+        page.update()
 
     def handle_upload(_: ft.ControlEvent) -> None:
         source_path = selected_file.get("path")
@@ -110,69 +146,66 @@ def main(page: ft.Page) -> None:
         selected_file["path"] = None
         refresh_lists()
 
-    tabs = ft.Tabs(
-        expand=1,
-        tabs=[
-            ft.Tab(
-                text="Genel Kütüphane",
-                content=ft.Container(
-                    padding=10,
-                    content=general_list,
+    upload_panel = ft.Container(
+        padding=10,
+        border=ft.Border.all(1, "#D0D0D0"),
+        border_radius=10,
+        content=ft.Column(
+            controls=[
+                ft.Text("PDF Yukle", theme_style=ft.TextThemeStyle.TITLE_MEDIUM),
+                ft.Text("Metin tabanli PDF yukleyerek kitapliginiza ekleyin."),
+                ft.Row(
+                    controls=[
+                        ft.OutlinedButton(
+                            "Dosya Sec",
+                            icon=ft.Icons.UPLOAD_FILE,
+                            on_click=pick_file,
+                        ),
+                        ft.OutlinedButton(
+                            "Yolu Onayla",
+                            icon=ft.Icons.CHECK_CIRCLE_OUTLINE,
+                            on_click=apply_input_path,
+                        ),
+                        ft.Button("Yukle", on_click=handle_upload),
+                    ]
                 ),
-            ),
-            ft.Tab(
-                text="Şahsi Kütüphanem",
-                content=ft.Container(
-                    padding=10,
-                    content=personal_list,
-                ),
-            ),
-            ft.Tab(
-                text="PDF Yükle",
-                content=ft.Container(
-                    padding=10,
-                    content=ft.Column(
-                        controls=[
-                            ft.Text("Yeni PDF Ekle", style=ft.TextThemeStyle.TITLE_MEDIUM),
-                            ft.Text(
-                                "Metin tabanlı PDF yükleyerek kitaplığınıza ekleyin.",
-                                color=ft.Colors.GREY_700,
-                            ),
-                            ft.Row(
-                                controls=[
-                                    ft.OutlinedButton(
-                                        "Dosya Seç",
-                                        icon=ft.Icons.UPLOAD_FILE,
-                                        on_click=lambda _: file_picker.pick_files(
-                                            allow_multiple=False,
-                                            allowed_extensions=["pdf"],
-                                        ),
-                                    ),
-                                    ft.ElevatedButton("Yükle", on_click=handle_upload),
-                                ]
-                            ),
-                            upload_status,
-                        ],
-                        spacing=14,
-                    ),
-                ),
-            ),
-        ],
+                file_path_input,
+                upload_status,
+            ],
+            spacing=12,
+        ),
     )
 
     page.add(
         ft.Column(
             controls=[
-                ft.Text(APP_NAME, style=ft.TextThemeStyle.HEADLINE_SMALL),
-                ft.Text("PDF metinlerini okuyun ve Gemini ile özetleyin.", color=ft.Colors.GREY_700),
+                ft.Text(APP_NAME, theme_style=ft.TextThemeStyle.HEADLINE_SMALL),
+                ft.Text("PDF metinlerini okuyun ve Gemini ile ozetleyin."),
                 ft.Divider(),
-                tabs,
+                ft.Text("Genel Kutuphane", theme_style=ft.TextThemeStyle.TITLE_MEDIUM),
+                ft.Container(
+                    height=220,
+                    padding=10,
+                    border=ft.Border.all(1, "#D0D0D0"),
+                    border_radius=10,
+                    content=general_list,
+                ),
+                ft.Text("Sahsi Kutuphanem", theme_style=ft.TextThemeStyle.TITLE_MEDIUM),
+                ft.Container(
+                    height=220,
+                    padding=10,
+                    border=ft.Border.all(1, "#D0D0D0"),
+                    border_radius=10,
+                    content=personal_list,
+                ),
+                upload_panel,
             ],
             expand=True,
+            scroll=ft.ScrollMode.AUTO,
         )
     )
     refresh_lists()
 
 
 if __name__ == "__main__":
-    ft.app(target=main)
+    ft.run(main)

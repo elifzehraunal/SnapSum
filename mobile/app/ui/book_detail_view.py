@@ -19,13 +19,19 @@ def build_book_dialog(
     """Create modal dialog for reading and summarizing selected PDF."""
     text_content = ft.Text("PDF metni yükleniyor...", selectable=True)
     summary_content = ft.Text(book.summary or "Henüz özet oluşturulmadı.", selectable=True)
-    summary_length = ft.Dropdown(
-        label="Özet Uzunluğu",
+    summary_length = ft.RadioGroup(
         value="Orta",
-        options=[ft.dropdown.Option("Kısa"), ft.dropdown.Option("Orta"), ft.dropdown.Option("Uzun")],
+        content=ft.Row(
+            controls=[
+                ft.Radio(value="Kısa", label="Kisa"),
+                ft.Radio(value="Orta", label="Orta"),
+                ft.Radio(value="Uzun", label="Uzun"),
+            ],
+            spacing=12,
+        ),
     )
     loader = ft.ProgressRing(visible=False, width=24, height=24, stroke_width=3)
-    status_text = ft.Text("", color=ft.Colors.GREY_700)
+    status_text = ft.Text("")
 
     try:
         extracted_text = backend_adapter.extract_text(book.file_path)
@@ -34,7 +40,7 @@ def build_book_dialog(
         extracted_text = ""
         text_content.value = f"PDF okunamadı: {error}"
 
-    async def summarize_click(_: ft.ControlEvent) -> None:
+    def summarize_click(_: ft.ControlEvent) -> None:
         if not extracted_text.strip():
             status_text.value = "Özetlenecek metin yok."
             page.update()
@@ -48,10 +54,9 @@ def build_book_dialog(
         status_text.value = "Özet hazırlanıyor..."
         page.update()
         try:
-            result = await page.run_thread(
-                backend_adapter.summarize_pdf,
-                book.file_path,
-                summary_length.value or "Orta",
+            result = backend_adapter.summarize_pdf(
+                pdf_path=book.file_path,
+                summary_length=summary_length.value or "Orta",
             )
             if result.success:
                 summary_content.value = result.summary
@@ -79,18 +84,19 @@ def build_book_dialog(
                     ft.Container(
                         height=180,
                         padding=10,
-                        bgcolor=ft.Colors.with_opacity(0.05, ft.Colors.INDIGO),
                         border_radius=10,
+                        border=ft.Border.all(1, "#D0D0D0"),
                         content=ft.ListView([text_content], auto_scroll=False),
                     ),
-                    ft.Row([summary_length, ft.ElevatedButton("Özetle", on_click=summarize_click), loader]),
+                    ft.Text("Ozet Uzunlugu", weight=ft.FontWeight.BOLD),
+                    ft.Row([summary_length, ft.Button("Ozetle", on_click=summarize_click), loader]),
                     status_text,
                     ft.Text("Özet", weight=ft.FontWeight.BOLD),
                     ft.Container(
                         height=180,
                         padding=10,
-                        bgcolor=ft.Colors.with_opacity(0.06, ft.Colors.SLATE_600),
                         border_radius=10,
+                        border=ft.Border.all(1, "#D0D0D0"),
                         content=ft.ListView([summary_content], auto_scroll=False),
                     ),
                 ],
