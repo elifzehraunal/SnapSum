@@ -21,8 +21,10 @@ import fitz
 
 try:
     import google.generativeai as genai
+    import PIL.Image
 except Exception:  # pragma: no cover - optional at runtime
     genai = None
+    PIL = None
 
 
 SummaryLength = Literal["Kısa", "Orta", "Uzun"]
@@ -73,16 +75,15 @@ class BackendManager:
     # ----------------------------
     def extract_plain_text(self, pdf_path: str | Path) -> str:
         """
-        Extract plain text from PDF and normalize it.
-
-        Not:
-        - `page.get_text("text")` sadece metin katmanını alır.
-        - Görseller doğrudan alınmaz; tablo/grafik içeriği metin katmanındaysa
-          heuristik temizleme uygulanır.
+        Extract plain text from PDF or TXT and normalize it.
         """
         path = Path(pdf_path)
         if not path.exists():
-            raise FileNotFoundError(f"PDF bulunamadı: {path}")
+            raise FileNotFoundError(f"Dosya bulunamadı: {path}")
+
+        if path.suffix.lower() == ".txt":
+            raw_text = path.read_text(encoding="utf-8", errors="replace")
+            return self._normalize_text(raw_text)
 
         all_pages: list[str] = []
         with fitz.open(path) as doc:
@@ -173,6 +174,31 @@ class BackendManager:
                     continue
             balanced.append(chunk)
         return balanced
+
+    # ----------------------------
+    # Classification
+    # ----------------------------
+    def categorize_title(self, title: str) -> str:
+        """Gemini kullanarak başlığa göre kategori tahmini yapar."""
+        if not self._model:
+            return "Genel"
+        
+        prompt = (
+            f"Sen bir kütüphanecisin. Verilen kitap/dosya adını analiz et ve "
+            f"sadece şu kategorilerden birini seçerek cevap ver: "
+            f"Bilim, Tarih, Dram, Macera, Felsefe, Genel.\n\n"
+            f"Kitap Adı: {title}\nKategori:"
+        )
+        try:
+            response = self._model.generate_content(prompt)
+            cat = (response.text or "").strip()
+            valid_cats = ["Bilim", "Tarih", "Dram", "Macera", "Felsefe", "Genel"]
+            for v in valid_cats:
+                if v.lower() in cat.lower():
+                    return v
+            return "Genel"
+        except Exception:
+            return "Genel"
 
     # ----------------------------
     # Gemini prompts & summary
@@ -330,4 +356,73 @@ class BackendManager:
                 False,
                 f"Beklenmeyen bir hata oluştu: {error}",
             )
+
+    def summarize_image(
+        self,
+        image_path: str | Path,
+        summary_length: SummaryLength,
+    ) -> BackendResponse:
+        """Extract text from image and summarize using Gemini Vision."""
+        try:
+            if summary_length not in ("Kısa", "Orta", "Uzun"):
+                return BackendResponse(False, "Geçersiz özet uzunluğu seçimi.")
+
+            cache_key = self._cache_key(image_path, summary_length)
+            cache = self._load_cache()
+            if cache_key in cache and cache[cache_key].get("summary"):
+                return BackendResponse(
+                    success=True,
+                    message="Özet cache üzerinden getirildi.",
+                    summary=cache[cache_key]["summary"],
+                    from_cache=True,
+                )
+
+            if not self._model or not PIL:
+                return BackendResponse(
+                    success=False,
+                    message="Gemini veya Pillow kütüphanesi yüklenemedi.",
+                )
+
+            path = Path(image_path)
+            if not path.exists():
+                return BackendResponse(False, f"Görsel bulunamadı: {path}")
+
+            instruction = self._instruction_for(summary_length)
+            prompt = (
+                "Bu görseldeki metni dikkatlice oku ve aşağıdaki talimata göre özetle.\n"
+                f"Mod: {summary_length}\n"
+                f"Sistem Talimatı: {instruction}"
+            )
+
+            img = PIL.Image.open(path)
+            response = self._model.generate_content([prompt, img])
+            master_summary = (response.text or "").strip()
+
+            if not master_summary:
+                return BackendResponse(
+                    success=False,
+                    message="Görselden özet üretilemedi.",
+                )
+
+            cache[cache_key] = {
+                "file_path": str(path),
+                "summary_length": summary_length,
+                "model": self.model_name,
+                "summary": master_summary,
+            }
+            self._save_cache(cache)
+
+            return BackendResponse(
+                success=True,
+                message="Görsel başarıyla özetlendi.",
+                summary=master_summary,
+                from_cache=False,
+            )
+
+        except FileNotFoundError as error:
+            return BackendResponse(False, f"Dosya okunamadı: {error}")
+        except ConnectionError:
+            return BackendResponse(False, "İnternet bağlantısı hatası.")
+        except Exception as error:
+            return BackendResponse(False, f"Beklenmeyen bir hata oluştu: {error}")
 

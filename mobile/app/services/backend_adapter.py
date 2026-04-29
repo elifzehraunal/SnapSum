@@ -10,7 +10,7 @@ from dataclasses import dataclass
 import os
 from pathlib import Path
 import sys
-from typing import Any
+from typing import Any, Dict, List
 
 from app.config import GEMINI_API_KEY
 
@@ -42,13 +42,16 @@ class BackendAdapter:
 
         try:
             from backend.backend_manager import BackendManager
+            from backend.recommendation.engine import RecommendationEngine
 
             self._backend = BackendManager(
                 cache_path=cache_path,
                 gemini_api_key=api_key,
             )
+            self._recommendation_engine = RecommendationEngine()
         except Exception:
             self._backend = None
+            self._recommendation_engine = None
 
     @property
     def available(self) -> bool:
@@ -75,3 +78,32 @@ class BackendAdapter:
             summary=result.summary,
             from_cache=result.from_cache,
         )
+
+    def summarize_image(self, image_path: str | Path, summary_length: str) -> SummaryResult:
+        if not self._backend:
+            return SummaryResult(success=False, message="Backend manager yüklenemedi.")
+        result = self._backend.summarize_image(image_path=image_path, summary_length=summary_length)
+        return SummaryResult(
+            success=result.success,
+            message=result.message,
+            summary=result.summary,
+            from_cache=result.from_cache,
+        )
+
+    def get_user_profile(self, personal_books: List[Any]) -> Any:
+        """Get the user profile from reading history."""
+        if not self._recommendation_engine:
+            return None
+        return self._recommendation_engine.analyze_history(personal_books)
+
+    def get_recommendations(self, profile: Any, general_library: List[Any]) -> List[Any]:
+        """Get book recommendations based on user profile."""
+        if not self._recommendation_engine or not profile:
+            return []
+        return self._recommendation_engine.get_recommendations(profile, general_library)
+
+    def categorize_title(self, title: str) -> str:
+        """Categorize a book title using Gemini."""
+        if not self._backend:
+            return "Genel"
+        return self._backend.categorize_title(title)

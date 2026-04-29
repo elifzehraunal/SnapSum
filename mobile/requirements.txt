@@ -1,3 +1,4 @@
 flet
 PyMuPDF
 google-generativeai
+Pillow
