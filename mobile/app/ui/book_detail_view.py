@@ -14,16 +14,20 @@ def build_book_dialog(
     page: ft.Page,
     book: Book,
     backend_adapter: BackendAdapter,
-    on_summary_saved: Callable[[str, str], None],
+    on_summary_saved: Callable[[str, str, str], None],
+    repository=None,
 ) -> ft.AlertDialog:
-    """Create modal dialog for reading and summarizing selected PDF."""
+    """Create modal dialog for reading and summarizing selected PDF.
+
+    repository parametresi verilirse özetleme öncesi DB'den cache kontrol edilir.
+    """
     text_content = ft.Text("PDF metni yükleniyor...", selectable=True)
     summary_content = ft.Text(book.summary or "Henüz özet oluşturulmadı.", selectable=True)
     summary_length = ft.RadioGroup(
         value="Orta",
         content=ft.Row(
             controls=[
-                ft.Radio(value="Kısa", label="Kisa"),
+                ft.Radio(value="Kısa", label="Kısa"),
                 ft.Radio(value="Orta", label="Orta"),
                 ft.Radio(value="Uzun", label="Uzun"),
             ],
@@ -34,19 +38,27 @@ def build_book_dialog(
     status_text = ft.Text("")
 
     try:
-        extracted_text = backend_adapter.extract_text(book.file_path)
-        text_content.value = extracted_text or "Bu PDF içinde metin bulunamadı."
-    except Exception as error:  # pylint: disable=broad-except
+        extracted_text = backend_adapter.extract_text(book.file_path) if backend_adapter.available else ""
+        text_content.value = extracted_text or "Bu dosyada metin bulunamadı."
+    except Exception as error:
         extracted_text = ""
-        text_content.value = f"PDF okunamadı: {error}"
+        text_content.value = f"Dosya okunamadı: {error}"
 
     def summarize_click(_: ft.ControlEvent) -> None:
-        if not extracted_text.strip():
-            status_text.value = "Özetlenecek metin yok."
-            page.update()
-            return
+        sel_type = summary_length.value or "Orta"
+
+        # 1) Önce DB cache'i kontrol et
+        if repository:
+            cached = repository.get_summary(book.id, sel_type)
+            if cached:
+                summary_content.value = cached
+                on_summary_saved(book.id, cached, sel_type)
+                status_text.value = f"✅ Özet veritabanından getirildi ({sel_type})."
+                page.update()
+                return
+
         if not backend_adapter.available:
-            status_text.value = "Backend bağlantısı hazır değil."
+            status_text.value = "⚠️ Backend bağlantısı hazır değil."
             page.update()
             return
 
@@ -54,20 +66,24 @@ def build_book_dialog(
         status_text.value = "Özet hazırlanıyor..."
         page.update()
         try:
-            result = backend_adapter.summarize_pdf(
-                pdf_path=book.file_path,
-                summary_length=summary_length.value or "Orta",
+            result = backend_adapter.summarize(
+                file_path=book.file_path,
+                summary_type=sel_type,
+                book_id=book.id,
+                repository=repository,
             )
             if result.success:
                 summary_content.value = result.summary
-                on_summary_saved(book.id, result.summary)
+                on_summary_saved(book.id, result.summary, sel_type)
                 status_text.value = (
-                    "Özet cache'den yüklendi." if result.from_cache else "Özet güncellendi."
+                    f"✅ Özet DB'den yüklendi ({sel_type})."
+                    if result.from_cache
+                    else f"✅ Özet oluşturuldu ve kaydedildi ({sel_type})."
                 )
             else:
-                status_text.value = result.message
-        except Exception as error:  # pylint: disable=broad-except
-            status_text.value = f"Özetleme hatası: {error}"
+                status_text.value = f"❌ {result.message}"
+        except Exception as error:
+            status_text.value = f"❌ Özetleme hatası: {error}"
         finally:
             loader.visible = False
             page.update()
@@ -77,7 +93,7 @@ def build_book_dialog(
         title=ft.Text(book.title),
         content=ft.Container(
             width=600,
-            height=560,
+            height=580,
             content=ft.Column(
                 controls=[
                     ft.Text("Kitap Metni", weight=ft.FontWeight.BOLD),
@@ -88,8 +104,8 @@ def build_book_dialog(
                         border=ft.Border.all(1, "#D0D0D0"),
                         content=ft.ListView([text_content], auto_scroll=False),
                     ),
-                    ft.Text("Ozet Uzunlugu", weight=ft.FontWeight.BOLD),
-                    ft.Row([summary_length, ft.Button("Ozetle", on_click=summarize_click), loader]),
+                    ft.Text("Özet Uzunluğu", weight=ft.FontWeight.BOLD),
+                    ft.Row([summary_length, ft.TextButton("Özetle", on_click=summarize_click), loader]),
                     status_text,
                     ft.Text("Özet", weight=ft.FontWeight.BOLD),
                     ft.Container(

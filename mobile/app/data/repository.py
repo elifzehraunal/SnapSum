@@ -1,39 +1,61 @@
-"""Forward-compatible repository abstractions.
+"""Repository layer — thin wrapper over DatabaseManager.
 
-Bu katman, bugün bellek içi çalışır; ileride SQLite/PostgreSQL gibi gerçek
-veritabanlarına geçişte aynı arayüz korunabilir.
+UI kodu bu sınıfla konuşur; veritabanı detaylarını bilmez.
+Arayüz değişmeden DatabaseManager farklı bir backend'e
+(PostgreSQL, Firestore vb.) taşınabilir.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Iterable
 
 from app.models import Book
+from app.data.database import DatabaseManager
 
 
-@dataclass
 class BookRepository:
-    """In-memory repository with DB-ready method signatures."""
+    """High-level data access for Book objects."""
 
-    _books: list[Book] = field(default_factory=list)
+    def __init__(self, db_path: str | Path = "data/snapsum.db") -> None:
+        self._db = DatabaseManager(db_path)
 
-    def seed_general_books(self, books: list[Book]) -> None:
-        if self.list_books(source="general"):
-            return
-        self._books.extend(books)
-
-    def list_books(self, source: str | None = None) -> list[Book]:
-        if source is None:
-            return list(self._books)
-        return [book for book in self._books if book.source == source]
+    # ------------------------------------------------------------------
+    # Book operations
+    # ------------------------------------------------------------------
 
     def add_book(self, book: Book) -> None:
-        # TODO(db): INSERT INTO books(title, file_path, source, summary, ...)
-        self._books.append(book)
+        """Persist a new book to the database."""
+        self._db.add_book(book)
 
-    def update_summary(self, book_id: str, summary: str) -> None:
-        # TODO(db): UPDATE books SET summary=? WHERE id=?
-        for book in self._books:
-            if book.id == book_id:
-                book.summary = summary
-                return
+    def get_book(self, book_id: str) -> Book | None:
+        """Fetch one book by its UUID."""
+        return self._db.get_book(book_id)
+
+    def list_books(self, source: str | None = None) -> list[Book]:
+        """List books, optionally filtered by source ('general'/'personal')."""
+        return self._db.list_books(source)
+
+    def seed_general_books(self, books: Iterable[Book]) -> None:
+        """Seed built-in library once on first run."""
+        self._db.seed_general_books(books)
+
+    # ------------------------------------------------------------------
+    # Summary operations (DB cache — replaces JSON summary_cache.json)
+    # ------------------------------------------------------------------
+
+    def get_summary(self, book_id: str, summary_type: str) -> str | None:
+        """Return a cached summary if it exists, else None."""
+        return self._db.get_summary(book_id, summary_type)
+
+    def save_summary(self, book_id: str, summary_type: str, content: str) -> None:
+        """Persist a newly generated summary to the database."""
+        self._db.save_summary(book_id, summary_type, content)
+
+    def update_summary(self, book_id: str, summary: str, summary_type: str = "Orta") -> None:
+        """Convenience alias used by the UI (book_detail_view)."""
+        self._db.save_summary(book_id, summary_type, summary)
+
+    def list_summaries(self, book_id: str) -> list[dict]:
+        """Return all summary records for a book."""
+        return self._db.list_summaries(book_id)

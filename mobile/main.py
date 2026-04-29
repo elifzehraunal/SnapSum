@@ -8,7 +8,7 @@ import uuid
 
 import flet as ft
 
-from app.config import APP_NAME, UPLOADS_DIR
+from app.config import APP_NAME, DB_FILE, UPLOADS_DIR
 from app.data.repository import BookRepository
 from app.models import Book
 from app.services.backend_adapter import BackendAdapter
@@ -17,16 +17,22 @@ from app.ui.theme import app_theme
 
 
 def build_seed_books() -> list[Book]:
-    """Create 20 placeholder books for general library."""
+    """Create seed books from cleaned_texts directory."""
+    import random
     seeds: list[Book] = []
-    for i in range(1, 21):
-        seeds.append(
-            Book(
-                title=f"Hazır Kitap {i:02d}",
-                file_path=str(UPLOADS_DIR / f"sample_{i:02d}.pdf"),
-                source="general",
+    categories = ["Bilim", "Tarih", "Dram", "Macera", "Felsefe", "Genel"]
+    repo_root = Path(__file__).resolve().parents[1]
+    books_dir = repo_root / "cleaned_texts"
+    if books_dir.exists():
+        for txt_file in sorted(books_dir.glob("*.txt")):
+            seeds.append(
+                Book(
+                    title=txt_file.stem,
+                    file_path=str(txt_file.resolve()),
+                    source="general",
+                    category=random.choice(categories),
+                )
             )
-        )
     return seeds
 
 
@@ -40,7 +46,7 @@ def main(page: ft.Page) -> None:
     page.window.height = 880
 
     UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
-    repository = BookRepository()
+    repository = BookRepository(db_path=DB_FILE)
     repository.seed_general_books(build_seed_books())
     backend_adapter = BackendAdapter()
     file_picker = ft.FilePicker()
@@ -56,7 +62,7 @@ def main(page: ft.Page) -> None:
     )
 
     def open_book(book: Book) -> None:
-        dialog = build_book_dialog(page, book, backend_adapter, repository.update_summary)
+        dialog = build_book_dialog(page, book, backend_adapter, repository.update_summary, repository=repository)
         page.dialog = dialog
         dialog.open = True
         page.update()
