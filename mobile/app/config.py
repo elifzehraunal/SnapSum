@@ -16,10 +16,10 @@ DB_FILE = DATA_DIR / "books.json"
 # .env dosyasını proje kök dizininden yükle
 load_dotenv(BASE_DIR / ".env")
 
-# Gemini model can be changed later without touching business logic.
-GEMINI_MODEL = "gemini-2.0-flash"
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+# Mistral model can be changed later without touching business logic.
+MISTRAL_MODEL = "mistral-medium-latest"
+MISTRAL_API_KEY = os.getenv("MISTRAL_API_KEY", "")
 
-# Approximate character limit for one Gemini request input section.
+# Approximate character limit for one Mistral request input section.
 CHUNK_SIZE = 12_000
 CHUNK_OVERLAP = 500

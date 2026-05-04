@@ -12,7 +12,7 @@ from pathlib import Path
 import sys
 from typing import Any, Dict, List
 
-from app.config import GEMINI_API_KEY
+from app.config import MISTRAL_API_KEY
 
 
 @dataclass
@@ -38,7 +38,7 @@ class BackendAdapter:
             sys.path.append(str(repo_root))
 
         cache_path = repo_root / "backend" / "database" / "summary_cache.json"
-        api_key = os.getenv("GEMINI_API_KEY", GEMINI_API_KEY)
+        api_key = os.getenv("MISTRAL_API_KEY", MISTRAL_API_KEY)
 
         try:
             from backend.backend_manager import BackendManager
@@ -46,7 +46,7 @@ class BackendAdapter:
 
             self._backend = BackendManager(
                 cache_path=cache_path,
-                gemini_api_key=api_key,
+                mistral_api_key=api_key,
             )
             self._recommendation_engine = RecommendationEngine()
         except Exception:
@@ -103,7 +103,7 @@ class BackendAdapter:
         return self._recommendation_engine.get_recommendations(profile, general_library)
 
     def categorize_title(self, title: str) -> str:
-        """Categorize a book title using Gemini."""
+        """Categorize a book title using Mistral."""
         if not self._backend:
             return "Genel"
         return self._backend.categorize_title(title)

@@ -1,5 +1,5 @@
 flet
 PyMuPDF
-google-generativeai
+httpx
 Pillow
 python-dotenv

@@ -13,6 +13,58 @@ from app.services.backend_adapter import BackendAdapter
 from app.ui.theme import PRIMARY, TEXT_SECONDARY, SUCCESS, ERROR
 
 
+def build_summary_dialog(page: ft.Page, book: Book) -> ft.AlertDialog:
+    """Create modal dialog for reading an existing summary."""
+    
+    def copy_summary(_: ft.ControlEvent) -> None:
+        if book.summary:
+            page.set_clipboard(book.summary)
+            status_text.value = "✓ Özet panoya kopyalandı!"
+            status_text.color = SUCCESS
+            page.update()
+
+    status_text = ft.Text("", size=12)
+    copy_btn = ft.IconButton(
+        ft.Icons.COPY,
+        tooltip="Özeti Kopyala",
+        icon_size=20,
+        on_click=copy_summary,
+    )
+
+    summary_content = ft.Text(
+        book.summary or "Özet bulunamadı.",
+        selectable=True,
+        size=14,
+    )
+
+    return ft.AlertDialog(
+        modal=True,
+        title=ft.Text(book.title, weight=ft.FontWeight.BOLD),
+        content=ft.Container(
+            width=600,
+            height=400,
+            content=ft.Column(
+                controls=[
+                    ft.Row([
+                        ft.Text("Kitap Özeti", weight=ft.FontWeight.BOLD, size=16),
+                        copy_btn,
+                    ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
+                    status_text,
+                    ft.Container(
+                        expand=True,
+                        padding=10,
+                        border_radius=10,
+                        border=ft.Border.all(1, "#E0E0E0"),
+                        content=ft.ListView([summary_content], auto_scroll=False),
+                    ),
+                ],
+            ),
+        ),
+        actions=[ft.TextButton("Kapat", on_click=lambda _: page.pop_dialog())],
+        actions_alignment=ft.MainAxisAlignment.END,
+    )
+
+
 def build_book_dialog(
     page: ft.Page,
     book: Book,

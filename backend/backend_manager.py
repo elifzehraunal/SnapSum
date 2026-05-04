@@ -3,13 +3,14 @@
 Bu dosya Flet arayüzünden çağrılabilecek backend mantığını içerir:
 - PDF metin ayıklama ve normalize etme
 - Uzun metni anlamlı parçalara bölme (chunking)
-- Gemini ile map-reduce özetleme
+- Mistral AI ile map-reduce özetleme (HTTP API)
 - Aynı istekler için yerel cache kontrolü (JSON tabanlı)
 - Hata yönetimi ve kullanıcı dostu mesajlar
 """
 
 from __future__ import annotations
 
+import base64
 from dataclasses import dataclass
 from hashlib import sha256
 import json
@@ -18,18 +19,15 @@ import re
 from typing import Literal
 
 import fitz
-
-import warnings
+import httpx
 
 try:
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore", FutureWarning)
-        import google.generativeai as genai
     import PIL.Image
-except Exception:  # pragma: no cover - optional at runtime
-    genai = None
+except Exception:
     PIL = None
 
+
+MISTRAL_API_URL = "https://api.mistral.ai/v1/chat/completions"
 
 SummaryLength = Literal["Kısa", "Orta", "Uzun"]
 
@@ -47,32 +45,85 @@ class BackendResponse:
 class BackendManager:
     """Main business logic class for PDF summarization flow."""
 
+    # Özet moduna göre metnin ne kadarını işleyeceğimizi belirle
+    TEXT_LIMITS: dict[str, int] = {
+        "Kısa": 50_000,    # ~50K karakter yeterli
+        "Orta": 150_000,   # ~150K karakter
+        "Uzun": 500_000,   # ~500K karakter
+    }
+
     def __init__(
         self,
         cache_path: str | Path = "backend/database/summary_cache.json",
-        gemini_api_key: str | None = None,
-        model_name: str = "gemini-2.0-flash",
-        chunk_min: int = 5000,
-        chunk_max: int = 8000,
+        mistral_api_key: str | None = None,
+        model_name: str = "mistral-small-latest",
+        chunk_min: int = 20_000,
+        chunk_max: int = 30_000,
     ) -> None:
         self.cache_path = Path(cache_path)
         self.cache_path.parent.mkdir(parents=True, exist_ok=True)
         if not self.cache_path.exists():
             self.cache_path.write_text("{}", encoding="utf-8")
 
-        self.gemini_api_key = gemini_api_key
+        self.mistral_api_key = mistral_api_key
         self.model_name = model_name
         self.chunk_min = chunk_min
         self.chunk_max = chunk_max
 
-        self._model = None
-        if genai and gemini_api_key:
-            try:
-                genai.configure(api_key=gemini_api_key)
-                self._model = genai.GenerativeModel(model_name)
-            except Exception:
-                # Anahtar geçersiz/bağlantı hatası gibi durumlarda uygulama çökmesin.
-                self._model = None
+        self._ready = False
+        if mistral_api_key:
+            self._ready = True
+
+    # ----------------------------
+    # Mistral HTTP chat helper
+    # ----------------------------
+    def _chat(self, prompt: str, model: str | None = None) -> str:
+        """Send a single-turn chat message to Mistral via HTTP and return the text."""
+        if not self._ready:
+            return ""
+        headers = {
+            "Authorization": f"Bearer {self.mistral_api_key}",
+            "Content-Type": "application/json",
+        }
+        payload = {
+            "model": model or self.model_name,
+            "messages": [{"role": "user", "content": prompt}],
+        }
+        resp = httpx.post(MISTRAL_API_URL, json=payload, headers=headers, timeout=120)
+        resp.raise_for_status()
+        data = resp.json()
+        return (data["choices"][0]["message"]["content"] or "").strip()
+
+    def _chat_vision(self, prompt_text: str, image_b64: str, mime_type: str) -> str:
+        """Send a vision request to Mistral via HTTP."""
+        if not self._ready:
+            return ""
+        headers = {
+            "Authorization": f"Bearer {self.mistral_api_key}",
+            "Content-Type": "application/json",
+        }
+        payload = {
+            "model": "pixtral-large-latest",
+            "messages": [
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "image_url",
+                            "image_url": {"url": f"data:{mime_type};base64,{image_b64}"},
+                        },
+                        {
+                            "type": "text",
+                            "text": prompt_text,
+                        },
+                    ],
+                }
+            ],
+        }
+        resp = httpx.post(MISTRAL_API_URL, json=payload, headers=headers, timeout=120)
+        resp.raise_for_status()
+        data = resp.json()
+        return (data["choices"][0]["message"]["content"] or "").strip()
 
     # ----------------------------
     # PDF extraction & normalization
@@ -183,10 +234,10 @@ class BackendManager:
     # Classification
     # ----------------------------
     def categorize_title(self, title: str) -> str:
-        """Gemini kullanarak başlığa göre kategori tahmini yapar."""
-        if not self._model:
+        """Mistral kullanarak başlığa göre kategori tahmini yapar."""
+        if not self._ready:
             return "Genel"
-        
+
         prompt = (
             f"Sen bir kütüphanecisin. Verilen kitap/dosya adını analiz et ve "
             f"sadece şu kategorilerden birini seçerek cevap ver: "
@@ -194,8 +245,7 @@ class BackendManager:
             f"Kitap Adı: {title}\nKategori:"
         )
         try:
-            response = self._model.generate_content(prompt)
-            cat = (response.text or "").strip()
+            cat = self._chat(prompt)
             valid_cats = ["Bilim", "Tarih", "Dram", "Macera", "Felsefe", "Genel"]
             for v in valid_cats:
                 if v.lower() in cat.lower():
@@ -205,7 +255,7 @@ class BackendManager:
             return "Genel"
 
     # ----------------------------
-    # Gemini prompts & summary
+    # Mistral prompts & summary
     # ----------------------------
     def _instruction_for(self, summary_length: SummaryLength) -> str:
         prompts = {
@@ -246,7 +296,7 @@ class BackendManager:
         pdf_path: str | Path,
         summary_length: SummaryLength,
     ) -> BackendResponse:
-        """Complete flow: cache check -> extract -> chunk -> Gemini map-reduce."""
+        """Complete flow: cache check -> extract -> chunk -> Mistral map-reduce."""
         try:
             if summary_length not in ("Kısa", "Orta", "Uzun"):
                 return BackendResponse(False, "Geçersiz özet uzunluğu seçimi.")
@@ -261,19 +311,19 @@ class BackendManager:
                     from_cache=True,
                 )
 
-            if not self.gemini_api_key:
+            if not self.mistral_api_key:
                 return BackendResponse(
                     success=False,
                     message=(
-                        "Gemini API anahtarı tanımlı değil. "
-                        "Lütfen backend manager oluştururken anahtar verin."
+                        "Mistral API anahtarı tanımlı değil. "
+                        "Lütfen .env dosyasına MISTRAL_API_KEY ekleyin."
                     ),
                 )
-            if not self._model:
+            if not self._ready:
                 return BackendResponse(
                     success=False,
                     message=(
-                        "Gemini modeli başlatılamadı. API anahtarı geçersiz veya "
+                        "Mistral istemcisi başlatılamadı. API anahtarı geçersiz veya "
                         "bağlantı sorunu olabilir."
                     ),
                 )
@@ -284,6 +334,11 @@ class BackendManager:
                     success=False,
                     message="PDF içinde okunabilir metin bulunamadı.",
                 )
+
+            # Özet moduna göre metni sınırla (hız optimizasyonu)
+            text_limit = self.TEXT_LIMITS.get(summary_length, 500_000)
+            if len(text) > text_limit:
+                text = text[:text_limit]
 
             chunks = self.chunk_text(text)
             instruction = self._instruction_for(summary_length)
@@ -297,15 +352,14 @@ class BackendManager:
                     f"Sistem Talimati: {instruction}\n"
                     f"Parca {idx}/{len(chunks)}:\n{chunk}"
                 )
-                response = self._model.generate_content(prompt)
-                part = (response.text or "").strip()
+                part = self._chat(prompt)
                 if part:
                     partials.append(part)
 
             if not partials:
                 return BackendResponse(
                     success=False,
-                    message="Gemini yanıtı boş döndü. Lütfen tekrar deneyin.",
+                    message="Mistral yanıtı boş döndü. Lütfen tekrar deneyin.",
                 )
 
             # REDUCE step: parçaları master özete dönüştür
@@ -319,8 +373,7 @@ class BackendManager:
                     f"Sistem Talimati: {instruction}\n\n"
                     + "\n\n---\n\n".join(partials)
                 )
-                reduce_response = self._model.generate_content(reduce_prompt)
-                master_summary = (reduce_response.text or "").strip()
+                master_summary = self._chat(reduce_prompt)
 
             if not master_summary:
                 return BackendResponse(
@@ -353,7 +406,7 @@ class BackendManager:
         except TimeoutError:
             return BackendResponse(
                 False,
-                "Gemini isteği zaman aşımına uğradı. Tekrar deneyin.",
+                "Mistral isteği zaman aşımına uğradı. Tekrar deneyin.",
             )
         except Exception as error:  # kapsamlı güvenlik ağı
             return BackendResponse(
@@ -366,7 +419,7 @@ class BackendManager:
         image_path: str | Path,
         summary_length: SummaryLength,
     ) -> BackendResponse:
-        """Extract text from image and summarize using Gemini Vision."""
+        """Extract text from image and summarize using Mistral Vision (Pixtral)."""
         try:
             if summary_length not in ("Kısa", "Orta", "Uzun"):
                 return BackendResponse(False, "Geçersiz özet uzunluğu seçimi.")
@@ -381,26 +434,40 @@ class BackendManager:
                     from_cache=True,
                 )
 
-            if not self._model or not PIL:
+            if not self._ready:
                 return BackendResponse(
                     success=False,
-                    message="Gemini veya Pillow kütüphanesi yüklenemedi.",
+                    message="Mistral istemcisi yüklenemedi.",
                 )
 
             path = Path(image_path)
             if not path.exists():
                 return BackendResponse(False, f"Görsel bulunamadı: {path}")
 
+            # Görseli base64 formatına çevir
+            image_data = path.read_bytes()
+            b64_image = base64.b64encode(image_data).decode("utf-8")
+
+            # Uzantıdan MIME type belirle
+            ext = path.suffix.lower()
+            mime_map = {
+                ".jpg": "image/jpeg",
+                ".jpeg": "image/jpeg",
+                ".png": "image/png",
+                ".gif": "image/gif",
+                ".webp": "image/webp",
+                ".bmp": "image/bmp",
+            }
+            mime_type = mime_map.get(ext, "image/jpeg")
+
             instruction = self._instruction_for(summary_length)
-            prompt = (
+            prompt_text = (
                 "Bu görseldeki metni dikkatlice oku ve aşağıdaki talimata göre özetle.\n"
                 f"Mod: {summary_length}\n"
                 f"Sistem Talimatı: {instruction}"
             )
 
-            img = PIL.Image.open(path)
-            response = self._model.generate_content([prompt, img])
-            master_summary = (response.text or "").strip()
+            master_summary = self._chat_vision(prompt_text, b64_image, mime_type)
 
             if not master_summary:
                 return BackendResponse(
@@ -429,4 +496,3 @@ class BackendManager:
             return BackendResponse(False, "İnternet bağlantısı hatası.")
         except Exception as error:
             return BackendResponse(False, f"Beklenmeyen bir hata oluştu: {error}")
-

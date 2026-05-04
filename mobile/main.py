@@ -12,7 +12,7 @@ from app.config import APP_NAME, UPLOADS_DIR, DB_FILE
 from app.data.database import DatabaseManager
 from app.models import Book
 from app.services.backend_adapter import BackendAdapter
-from app.ui.book_detail_view import build_book_dialog
+from app.ui.book_detail_view import build_book_dialog, build_summary_dialog
 from app.ui.theme import (
     app_theme, PRIMARY, SECONDARY, SURFACE, CARD_BG,
     TEXT_SECONDARY, SUCCESS, ERROR, CAT_COLORS, CAT_ICONS,
@@ -145,7 +145,10 @@ def main(page: ft.Page) -> None:
 
     # ── Book tile builder ──
     def open_book(book: Book) -> None:
-        dialog = build_book_dialog(page, book, backend_adapter, db.update_summary)
+        if book.summary:
+            dialog = build_summary_dialog(page, book)
+        else:
+            dialog = build_book_dialog(page, book, backend_adapter, db.update_summary)
         page.show_dialog(dialog)
 
     def delete_book(book: Book) -> None:
@@ -283,12 +286,41 @@ def main(page: ft.Page) -> None:
         page.update()
 
     # ── Upload logic ──
-    def apply_input_path(_: ft.ControlEvent) -> None:
-        path_value = (file_path_input.value or "").strip().strip('"')
-        if not path_value:
-            upload_status.value = "Lütfen bir dosya yolu girin."
+    async def take_photo_and_summarize(_: ft.ControlEvent) -> None:
+        files = await file_picker.pick_files(
+            allow_multiple=False,
+            allowed_extensions=["png", "jpg", "jpeg"],
+            with_data=True,
+        )
+        if not files:
+            return
+
+        picked = files[0]
+        ext = Path(picked.name).suffix.lower()
+        target = UPLOADS_DIR / f"photo_{uuid.uuid4().hex[:8]}{ext}"
+
+        if picked.path:
+            shutil.copy2(picked.path, target)
+        elif getattr(picked, "bytes", None):
+            target.write_bytes(picked.bytes)
         else:
-            upload_status.value = f"Seçilen dosya: {Path(path_value).name}"
+            upload_status.value = "Fotoğraf okunamadı."
+            page.update()
+            return
+
+        new_book = Book(
+            title=f"Fotoğraf ({target.name[:5]})",
+            file_path=str(target),
+            source="personal",
+            category="Genel",
+        )
+        db.add_book(new_book)
+        refresh_all()
+        
+        # Navigate back to library and open dialog
+        page.navigation_bar.selected_index = 0
+        main_content.content = library_content
+        open_book(new_book)
         page.update()
 
     async def pick_file(_: ft.ControlEvent) -> None:
@@ -412,7 +444,7 @@ def main(page: ft.Page) -> None:
                 ft.Row(
                     [
                         ft.OutlinedButton("Dosya Seç", icon=ft.Icons.FOLDER_OPEN, on_click=pick_file),
-                        ft.OutlinedButton("Yolu Onayla", icon=ft.Icons.CHECK, on_click=apply_input_path),
+                        ft.OutlinedButton("Fotoğraf Çek", icon=ft.Icons.CAMERA_ALT, on_click=take_photo_and_summarize),
                     ]
                 ),
                 file_path_input,
