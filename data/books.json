@@ -1,0 +1,184 @@
+{
+  "books": [
+    {
+      "title": "Alice Miller - Beden Asla Yalan Söylemez",
+      "file_path": "/Users/elifzehraunal/Documents/GitHub/SnapSum/cleaned_texts/Alice Miller - Beden Asla Yalan Söylemez.txt",
+      "source": "general",
+      "category": "Bilim",
+      "summary": "",
+      "id": "b4f2dc14-4270-4698-a492-1a3230be182a",
+      "created_at": "2026-05-04T18:44:34.589623"
+    },
+    {
+      "title": "Attila İlhan - Tutuklunun Günlüğü",
+      "file_path": "/Users/elifzehraunal/Documents/GitHub/SnapSum/cleaned_texts/Attila İlhan - Tutuklunun Günlüğü.txt",
+      "source": "general",
+      "category": "Dram",
+      "summary": "",
+      "id": "4a5a6dca-2450-434e-a913-615fa6a85197",
+      "created_at": "2026-05-04T18:44:34.589987"
+    },
+    {
+      "title": "Ayşe Kulin Hüzün Everest Yayınları",
+      "file_path": "/Users/elifzehraunal/Documents/GitHub/SnapSum/cleaned_texts/Ayşe Kulin Hüzün Everest Yayınları.txt",
+      "source": "general",
+      "category": "Dram",
+      "summary": "",
+      "id": "2bf3ee99-ba83-437a-ba3a-6c31b527dbad",
+      "created_at": "2026-05-04T18:44:34.590041"
+    },
+    {
+      "title": "Beyaz Geceler Fyodor Mihailoviç Dostoyevski  2",
+      "file_path": "/Users/elifzehraunal/Documents/GitHub/SnapSum/cleaned_texts/Beyaz Geceler Fyodor Mihailoviç Dostoyevski  2.txt",
+      "source": "general",
+      "category": "Genel",
+      "summary": "",
+      "id": "b94907ae-b73b-456b-92d8-30db2d7fcfbf",
+      "created_at": "2026-05-04T18:44:34.590086"
+    },
+    {
+      "title": "Bir Bilim Adamın Serüveni _Celâl Şengör Kitabı_",
+      "file_path": "/Users/elifzehraunal/Documents/GitHub/SnapSum/cleaned_texts/Bir Bilim Adamın Serüveni _Celâl Şengör Kitabı_.txt",
+      "source": "general",
+      "category": "Bilim",
+      "summary": "",
+      "id": "3c470420-88d5-49d8-8b16-d8a6368b5552",
+      "created_at": "2026-05-04T18:44:34.590129"
+    },
+    {
+      "title": "Franz Kafka - Dava",
+      "file_path": "/Users/elifzehraunal/Documents/GitHub/SnapSum/cleaned_texts/Franz Kafka - Dava.txt",
+      "source": "general",
+      "category": "Dram",
+      "summary": "",
+      "id": "195fe7f4-aef0-4a86-afd2-41b9811db935",
+      "created_at": "2026-05-04T18:44:34.590171"
+    },
+    {
+      "title": "Franz Kafka - Milenaya Mektublar",
+      "file_path": "/Users/elifzehraunal/Documents/GitHub/SnapSum/cleaned_texts/Franz Kafka - Milenaya Mektublar.txt",
+      "source": "general",
+      "category": "Dram",
+      "summary": "",
+      "id": "894cdd11-aaa5-4e2c-932b-eb93812f123d",
+      "created_at": "2026-05-04T18:44:34.590208"
+    },
+    {
+      "title": "Göz~Stephen King",
+      "file_path": "/Users/elifzehraunal/Documents/GitHub/SnapSum/cleaned_texts/Göz~Stephen King.txt",
+      "source": "general",
+      "category": "Macera",
+      "summary": "",
+      "id": "5b4ba609-af54-4b5d-bc30-f69889f763ef",
+      "created_at": "2026-05-04T18:44:34.590246"
+    },
+    {
+      "title": "J.R.R. Tolkien - Yüzüklerin Efendisi",
+      "file_path": "/Users/elifzehraunal/Documents/GitHub/SnapSum/cleaned_texts/J.R.R. Tolkien - Yüzüklerin Efendisi.txt",
+      "source": "general",
+      "category": "Macera",
+      "summary": "",
+      "id": "50e3c7f5-f000-4a5e-a0c9-02c49b631f15",
+      "created_at": "2026-05-04T18:44:34.590284"
+    },
+    {
+      "title": "Jean Paul Sartre - Bulantı",
+      "file_path": "/Users/elifzehraunal/Documents/GitHub/SnapSum/cleaned_texts/Jean Paul Sartre - Bulantı.txt",
+      "source": "general",
+      "category": "Felsefe",
+      "summary": "",
+      "id": "e3bf7f53-a792-477e-bb3b-a5754f75d8cc",
+      "created_at": "2026-05-04T18:44:34.590322"
+    },
+    {
+      "title": "John Steinbeck Fareler ve İnsanlar Sel Yayınları",
+      "file_path": "/Users/elifzehraunal/Documents/GitHub/SnapSum/cleaned_texts/John Steinbeck Fareler ve İnsanlar Sel Yayınları.txt",
+      "source": "general",
+      "category": "Dram",
+      "summary": "",
+      "id": "149fa3df-4161-4998-9c6c-d88af55b6c0c",
+      "created_at": "2026-05-04T18:44:34.590360"
+    },
+    {
+      "title": "Khaled Hosseini Bin Muhteşem Güneş Everest Yayınları",
+      "file_path": "/Users/elifzehraunal/Documents/GitHub/SnapSum/cleaned_texts/Khaled Hosseini Bin Muhteşem Güneş Everest Yayınları.txt",
+      "source": "general",
+      "category": "Dram",
+      "summary": "",
+      "id": "727af0d9-fb3c-434b-8884-ea79b85afe6e",
+      "created_at": "2026-05-04T18:44:34.590401"
+    },
+    {
+      "title": "Paulo Coelho Veronika Ölmek İstiyor Can Yayınları",
+      "file_path": "/Users/elifzehraunal/Documents/GitHub/SnapSum/cleaned_texts/Paulo Coelho Veronika Ölmek İstiyor Can Yayınları.txt",
+      "source": "general",
+      "category": "Felsefe",
+      "summary": "",
+      "id": "f78f0322-ee81-4bc7-9cf8-9fc3cf62efd6",
+      "created_at": "2026-05-04T18:44:34.590441"
+    },
+    {
+      "title": "Rıfat Ilgaz - Halime Kaptan (Çınar Yay.)",
+      "file_path": "/Users/elifzehraunal/Documents/GitHub/SnapSum/cleaned_texts/Rıfat Ilgaz - Halime Kaptan (Çınar Yay.).txt",
+      "source": "general",
+      "category": "Macera",
+      "summary": "",
+      "id": "e528fa55-3b36-4d64-b32e-d1778081a5ac",
+      "created_at": "2026-05-04T18:44:34.590482"
+    },
+    {
+      "title": "Stephen Hawking - Büyük Tasarım",
+      "file_path": "/Users/elifzehraunal/Documents/GitHub/SnapSum/cleaned_texts/Stephen Hawking - Büyük Tasarım.txt",
+      "source": "general",
+      "category": "Bilim",
+      "summary": "",
+      "id": "0887b1e9-d557-4812-bfcd-50ae758a5cbe",
+      "created_at": "2026-05-04T18:44:34.590520"
+    },
+    {
+      "title": "Stephen King Hayvan Mezarlığı Altın Kitaplar",
+      "file_path": "/Users/elifzehraunal/Documents/GitHub/SnapSum/cleaned_texts/Stephen King Hayvan Mezarlığı Altın Kitaplar.txt",
+      "source": "general",
+      "category": "Macera",
+      "summary": "",
+      "id": "fdfdc82a-7d5c-45b9-ab9f-26ee0aa8af56",
+      "created_at": "2026-05-04T18:44:34.590561"
+    },
+    {
+      "title": "Tolstoy - İvan İlyiç'in Ölümü",
+      "file_path": "/Users/elifzehraunal/Documents/GitHub/SnapSum/cleaned_texts/Tolstoy - İvan İlyiç'in Ölümü.txt",
+      "source": "general",
+      "category": "Felsefe",
+      "summary": "",
+      "id": "560a4871-b36b-4366-ba56-4ae713d9ae5e",
+      "created_at": "2026-05-04T18:44:34.590599"
+    },
+    {
+      "title": "Zülfü Livaneli Konstantiniyye Oteli Doğan Kitap",
+      "file_path": "/Users/elifzehraunal/Documents/GitHub/SnapSum/cleaned_texts/Zülfü Livaneli Konstantiniyye Oteli Doğan Kitap.txt",
+      "source": "general",
+      "category": "Tarih",
+      "summary": "",
+      "id": "d0e5f73d-7054-45b5-b210-fe08ce6677a3",
+      "created_at": "2026-05-04T18:44:34.590640"
+    },
+    {
+      "title": "Çavdar Tarlasında Çocuklar - Jerome David Salinger",
+      "file_path": "/Users/elifzehraunal/Documents/GitHub/SnapSum/cleaned_texts/Çavdar Tarlasında Çocuklar - Jerome David Salinger.txt",
+      "source": "general",
+      "category": "Dram",
+      "summary": "",
+      "id": "01003385-b3a3-44b8-8030-ec7931a53029",
+      "created_at": "2026-05-04T18:44:34.590677"
+    },
+    {
+      "title": "İLBER-ORTAYLI-Tarihin-İzinde",
+      "file_path": "/Users/elifzehraunal/Documents/GitHub/SnapSum/cleaned_texts/İLBER-ORTAYLI-Tarihin-İzinde.txt",
+      "source": "general",
+      "category": "Tarih",
+      "summary": "",
+      "id": "18bec176-15be-4d69-8f9d-22a55690dc00",
+      "created_at": "2026-05-04T18:44:34.590717"
+    }
+  ]
+}

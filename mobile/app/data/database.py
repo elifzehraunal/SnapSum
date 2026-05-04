@@ -52,6 +52,17 @@ class DatabaseManager:
                 break
         self._write_payload(payload)
 
+    def delete_book(self, book_id: str) -> bool:
+        """Delete a book by ID. Returns True if found and deleted."""
+        payload = self._read_payload()
+        books = payload.get("books", [])
+        new_books = [b for b in books if b.get("id") != book_id]
+        if len(new_books) == len(books):
+            return False
+        payload["books"] = new_books
+        self._write_payload(payload)
+        return True
+
     def seed_general_books(self, books: Iterable[Book]) -> None:
         """Populate default library only if empty."""
         if self.list_books(source="general"):

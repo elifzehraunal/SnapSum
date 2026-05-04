@@ -19,8 +19,12 @@ from typing import Literal
 
 import fitz
 
+import warnings
+
 try:
-    import google.generativeai as genai
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", FutureWarning)
+        import google.generativeai as genai
     import PIL.Image
 except Exception:  # pragma: no cover - optional at runtime
     genai = None
@@ -47,7 +51,7 @@ class BackendManager:
         self,
         cache_path: str | Path = "backend/database/summary_cache.json",
         gemini_api_key: str | None = None,
-        model_name: str = "gemini-1.5-flash",
+        model_name: str = "gemini-2.0-flash",
         chunk_min: int = 5000,
         chunk_max: int = 8000,
     ) -> None:
