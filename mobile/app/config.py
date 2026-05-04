@@ -11,7 +11,7 @@ APP_NAME = "SnapSum"
 BASE_DIR = Path(__file__).resolve().parents[2]
 DATA_DIR = BASE_DIR / "data"
 UPLOADS_DIR = DATA_DIR / "uploads"
-DB_FILE = DATA_DIR / "books.json"
+DB_FILE = DATA_DIR / "snapsum.db"
 
 # .env dosyasını proje kök dizininden yükle
 load_dotenv(BASE_DIR / ".env")

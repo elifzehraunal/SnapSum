@@ -206,7 +206,7 @@ def build_book_dialog(
                     )
                 if result.success:
                     summary_content.value = result.summary
-                    on_summary_saved(book.id, result.summary)
+                    on_summary_saved(book.id, result.summary, summary_length.value or "Orta")
                     status_text.value = (
                         "✓ Summary loaded from cache." if result.from_cache
                         else "✓ Summary generated successfully."

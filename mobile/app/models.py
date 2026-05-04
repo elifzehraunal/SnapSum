@@ -15,6 +15,7 @@ class Book:
     title: str
     file_path: str
     source: str  # "general" or "personal"
+    author: str = "Bilinmiyor"
     category: str = "Genel"
     summary: str = ""
     id: str = field(default_factory=lambda: str(uuid.uuid4()))

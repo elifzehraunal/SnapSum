@@ -145,10 +145,13 @@ def main(page: ft.Page) -> None:
 
     # ── Book tile builder ──
     def open_book(book: Book) -> None:
+        def _save_summary(book_id: str, summary: str, summary_type: str = "Orta") -> None:
+            db.update_summary(book_id, summary, summary_type)
+            refresh_library()
         if book.summary:
             dialog = build_summary_dialog(page, book)
         else:
-            dialog = build_book_dialog(page, book, backend_adapter, db.update_summary)
+            dialog = build_book_dialog(page, book, backend_adapter, _save_summary)
         page.show_dialog(dialog)
 
     def delete_book(book: Book) -> None:

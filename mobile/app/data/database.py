@@ -110,7 +110,11 @@ class DatabaseManager:
         return self._row_to_book(row) if row else None
 
     def list_books(self, source: str | None = None) -> list[Book]:
-        """Return all books, optionally filtered by source (book_type)."""
+        """Return all books, optionally filtered by source (book_type).
+
+        Her kitabın 'summary' alanı, summaries tablosundan en son
+        kaydedilen içerikle doldurulur (varsa).
+        """
         with self._conn() as conn:
             if source:
                 rows = conn.execute(
@@ -121,18 +125,35 @@ class DatabaseManager:
                 rows = conn.execute(
                     "SELECT * FROM books ORDER BY upload_date DESC"
                 ).fetchall()
-        return [self._row_to_book(r) for r in rows]
 
-    def delete_book(self, book_id: str) -> bool:
-        """Delete a book by ID. Returns True if found and deleted."""
-        payload = self._read_payload()
-        books = payload.get("books", [])
-        new_books = [b for b in books if b.get("id") != book_id]
-        if len(new_books) == len(books):
-            return False
-        payload["books"] = new_books
-        self._write_payload(payload)
-        return True
+            books = [self._row_to_book(r) for r in rows]
+
+            # Her kitap için en son özeti çek ve summary alanını doldur
+            for book in books:
+                row = conn.execute(
+                    """SELECT content FROM summaries
+                       WHERE book_id = ?
+                       ORDER BY created_at DESC LIMIT 1""",
+                    (book.id,),
+                ).fetchone()
+                if row:
+                    book.summary = row["content"]
+
+        return books
+
+    def delete_book(self, book_id: str) -> None:
+        """Delete a book by UUID (cascades to summaries via FK)."""
+        with self._conn() as conn:
+            conn.execute("DELETE FROM books WHERE id = ?", (book_id,))
+
+    def update_summary(self, book_id: str, summary: str,
+                       summary_type: str = "Orta") -> None:
+        """Convenience wrapper: kaydetmek için summary_type'ı dışarıdan al.
+
+        book_detail_view, on_summary_saved(book.id, result.summary)
+        şeklinde çağırır — summary_type bilinmiyorsa 'Orta' varsayılır.
+        """
+        self.save_summary(book_id, summary_type, summary)
 
     def seed_general_books(self, books: Iterable[Book]) -> None:
         """Populate general library only if the table is empty."""
