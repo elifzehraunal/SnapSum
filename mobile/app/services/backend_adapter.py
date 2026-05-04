@@ -62,16 +62,16 @@ class BackendAdapter:
             return ""
         return self._backend.extract_plain_text(pdf_path)
 
-    def summarize_pdf(self, pdf_path: str | Path, summary_length: str) -> SummaryResult:
+    def summarize_pdf(self, pdf_path: str | Path, summary_length: str, text_coverage: str = "Full") -> SummaryResult:
         if not self._backend:
             return SummaryResult(
                 success=False,
                 message=(
-                    "Backend manager yüklenemedi. backend/backend_manager.py "
-                    "dosyasını ve bağımlılıkları kontrol edin."
+                    "Backend manager could not be loaded. Check backend/backend_manager.py "
+                    "and dependencies."
                 ),
             )
-        result = self._backend.summarize_pdf(pdf_path=pdf_path, summary_length=summary_length)
+        result = self._backend.summarize_pdf(pdf_path=pdf_path, summary_length=summary_length, text_coverage=text_coverage)
         return SummaryResult(
             success=result.success,
             message=result.message,
@@ -79,10 +79,10 @@ class BackendAdapter:
             from_cache=result.from_cache,
         )
 
-    def summarize_image(self, image_path: str | Path, summary_length: str) -> SummaryResult:
+    def summarize_image(self, image_path: str | Path, summary_length: str, text_coverage: str = "Full") -> SummaryResult:
         if not self._backend:
-            return SummaryResult(success=False, message="Backend manager yüklenemedi.")
-        result = self._backend.summarize_image(image_path=image_path, summary_length=summary_length)
+            return SummaryResult(success=False, message="Backend manager could not be loaded.")
+        result = self._backend.summarize_image(image_path=image_path, summary_length=summary_length, text_coverage=text_coverage)
         return SummaryResult(
             success=result.success,
             message=result.message,

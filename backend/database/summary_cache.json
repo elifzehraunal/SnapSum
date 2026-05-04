@@ -16,5 +16,11 @@
     "summary_length": "Orta",
     "model": "mistral-small-latest",
     "summary": "1. **Uygulama Uyumsuzluğu**\n   - Uygulama 16 KB uyumluluğa sahip değildir.\n   \n2. **ELF Hizalama Kontrolü**\n   - ELF hizalama kontrolü başarısız oldu.\n\n3. **Uyumluluk Modu**\n   - Uygulama sayfa boyutu uyumluluğu modu kullanılarak çalıştırılacak.\n\n4. **En İyi Uyumluluk İçin Öneri**\n   - En iyi uyumluluk için uygulamanın 16 KB desteği ile yeniden derlenmesi önerilir.\n\n5. **Daha Fazla Bilgi**\n   - Daha fazla bilgi için \"https://developer.android.com/16kb-page-size\" adresine bakılması önerilir.\n\n6. **Uyumsuz Kütüphaneler**\n   - Bazı kütüphanelerin 16 KB hizalandırılmamış olduğu belirtilmiştir.\n\n7. **Belirli Kütüphaneler**\n   - x86_64/libbfilament-utils-in.so, x86_64/libimage_processing_utils.so, x86_64/libgltfio-in.so ve x86_64/libfilament-in.so kütüphanelerinin LOAD segmentleri hizalanmamıştır.\n\n8. **Son Kullanıcı Mesajı**\n   - \"Tamam\" ve \"Tekrar Gösterme\" seçenekleri sunulmuştur.\n\n9. **Yeni Bir Uygulama**\n   - \"Yeni\" başlığı altında \"Örneğin, bazen yanan, kademeli, bronzlaşır\" yazısı var.\n\n10. **Diğer Uygulama Bilgileri**\n    - \"Tıp III\" başlığı altında ilgili bilgiler mevcut."
+  },
+  "d20e478e702d996738c249738442723fd32d63e8a8dbfa9a19e66ae514478189": {
+    "pdf_path": "cleaned_texts\\Ayşe Kulin Hüzün Everest Yayınları.txt",
+    "summary_length": "Short",
+    "model": "mistral-small-latest",
+    "summary": "Ayşe Kulin’in *Kürkçü Dükkanı’na Dönüş* adlı kitabında, 1964-1983 yılları arasında geçen hikâye, genç bir kadının boşanma, annelik mücadelesi ve toplumun baskılarıyla baş etmesini anlatır. Ayşe, kocasından ayrıldıktan sonra çocuklarıyla annesinin yanına sığınır; ancak hem ailesinin hem de toplumun yargılarıyla mücadele eder. Eşi Mehmet’in ailesi velayet için hukuki savaş açarken, Ayşe de hukuki hilelere ve sağlık sorunlarıyla boğuşan babasının bakımı arasında hayata tutunmaya çalışır. Sonunda, sanatın kurtuluşunu bulan Ayşe, Ankara’da bir resim galerisinde iş bulur ve solcu, özgür ruhlu sanatçılarla yeni bir yaşam kurar—çocuklarının bakımı için nafaka isteyerek gururunu korur ve toplumun baskılarından sanatta özgürleşir."
   }
 }

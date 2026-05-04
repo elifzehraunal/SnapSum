@@ -19,20 +19,20 @@ def build_summary_dialog(page: ft.Page, book: Book) -> ft.AlertDialog:
     def copy_summary(_: ft.ControlEvent) -> None:
         if book.summary:
             page.set_clipboard(book.summary)
-            status_text.value = "✓ Özet panoya kopyalandı!"
+            status_text.value = "✓ Summary copied to clipboard!"
             status_text.color = SUCCESS
             page.update()
 
     status_text = ft.Text("", size=12)
     copy_btn = ft.IconButton(
         ft.Icons.COPY,
-        tooltip="Özeti Kopyala",
+        tooltip="Copy Summary",
         icon_size=20,
         on_click=copy_summary,
     )
 
     summary_content = ft.Text(
-        book.summary or "Özet bulunamadı.",
+        book.summary or "Summary not found.",
         selectable=True,
         size=14,
     )
@@ -46,7 +46,7 @@ def build_summary_dialog(page: ft.Page, book: Book) -> ft.AlertDialog:
             content=ft.Column(
                 controls=[
                     ft.Row([
-                        ft.Text("Kitap Özeti", weight=ft.FontWeight.BOLD, size=16),
+                        ft.Text("Book Summary", weight=ft.FontWeight.BOLD, size=16),
                         copy_btn,
                     ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
                     status_text,
@@ -60,7 +60,7 @@ def build_summary_dialog(page: ft.Page, book: Book) -> ft.AlertDialog:
                 ],
             ),
         ),
-        actions=[ft.TextButton("Kapat", on_click=lambda _: page.pop_dialog())],
+        actions=[ft.TextButton("Close", on_click=lambda _: page.pop_dialog())],
         actions_alignment=ft.MainAxisAlignment.END,
     )
 
@@ -75,12 +75,12 @@ def build_book_dialog(
     PAGE_SIZE = 1000
     state = {"current_page": 0, "extracted_text": ""}
 
-    text_content = ft.Text("Metin yükleniyor...", selectable=True, size=13)
-    page_info = ft.Text("Sayfa 1", weight=ft.FontWeight.BOLD, size=13)
+    text_content = ft.Text("Loading text...", selectable=True, size=13)
+    page_info = ft.Text("Page 1", weight=ft.FontWeight.BOLD, size=13)
 
     def update_text_view() -> None:
         if not state["extracted_text"]:
-            text_content.value = "Bu dosya içinde okunabilir metin bulunamadı."
+            text_content.value = "No readable text found in this file."
             page_info.value = ""
             return
 
@@ -89,7 +89,7 @@ def build_book_dialog(
         text_content.value = state["extracted_text"][start_idx:end_idx]
 
         total_pages = max(1, (len(state["extracted_text"]) + PAGE_SIZE - 1) // PAGE_SIZE)
-        page_info.value = f"Sayfa {state['current_page'] + 1} / {total_pages}"
+        page_info.value = f"Page {state['current_page'] + 1} / {total_pages}"
         page.update()
 
     def go_prev(_: ft.ControlEvent) -> None:
@@ -114,26 +114,37 @@ def build_book_dialog(
 
     try:
         if is_image:
-            state["extracted_text"] = "Görsel içeriği doğrudan analiz edilerek özetlenecektir."
+            state["extracted_text"] = "Image content will be analyzed directly."
         else:
             state["extracted_text"] = backend_adapter.extract_text(book.file_path)
         update_text_view()
     except Exception as error:  # pylint: disable=broad-except
         state["extracted_text"] = ""
-        text_content.value = f"Dosya okunamadı: {error}"
+        text_content.value = f"File could not be read: {error}"
 
     summary_content = ft.Text(
-        book.summary or "Henüz özet oluşturulmadı.",
+        book.summary or "Summary not generated yet.",
         selectable=True,
         size=13,
     )
     summary_length = ft.RadioGroup(
-        value="Orta",
+        value="Medium",
         content=ft.Row(
             controls=[
-                ft.Radio(value="Kısa", label="Kısa"),
-                ft.Radio(value="Orta", label="Orta"),
-                ft.Radio(value="Uzun", label="Uzun"),
+                ft.Radio(value="Short", label="Short"),
+                ft.Radio(value="Medium", label="Medium"),
+                ft.Radio(value="Long", label="Long"),
+            ],
+            spacing=12,
+        ),
+    )
+    text_coverage = ft.RadioGroup(
+        value="Full",
+        content=ft.Row(
+            controls=[
+                ft.Radio(value="Quarter", label="Quarter"),
+                ft.Radio(value="Half", label="Half"),
+                ft.Radio(value="Full", label="Full"),
             ],
             spacing=12,
         ),
@@ -142,7 +153,7 @@ def build_book_dialog(
     status_text = ft.Text("", size=12, color=TEXT_SECONDARY)
 
     summarize_btn = ft.Button(
-        "Özetle",
+        "Summarize",
         icon=ft.Icons.AUTO_AWESOME,
         on_click=lambda e: summarize_click(e),
     )
@@ -150,32 +161,32 @@ def build_book_dialog(
     def copy_summary(_: ft.ControlEvent) -> None:
         """Copy summary text to clipboard."""
         text = summary_content.value or ""
-        if text and text != "Henüz özet oluşturulmadı.":
+        if text and text != "Summary not generated yet.":
             page.set_clipboard(text)
-            status_text.value = "✓ Özet panoya kopyalandı!"
+            status_text.value = "✓ Summary copied to clipboard!"
             status_text.color = SUCCESS
             page.update()
 
     copy_btn = ft.IconButton(
         ft.Icons.COPY,
-        tooltip="Özeti Kopyala",
+        tooltip="Copy Summary",
         icon_size=20,
         on_click=copy_summary,
     )
 
     def summarize_click(_: ft.ControlEvent) -> None:
         if not state["extracted_text"].strip():
-            status_text.value = "Özetlenecek metin yok."
+            status_text.value = "No text to summarize."
             page.update()
             return
         if not backend_adapter.available:
-            status_text.value = "Backend bağlantısı hazır değil."
+            status_text.value = "Backend connection is not ready."
             page.update()
             return
 
         loader.visible = True
         summarize_btn.disabled = True
-        status_text.value = "Özet hazırlanıyor..."
+        status_text.value = "Preparing summary..."
         status_text.color = TEXT_SECONDARY
         page.update()
 
@@ -184,26 +195,28 @@ def build_book_dialog(
                 if is_image:
                     result = backend_adapter.summarize_image(
                         image_path=book.file_path,
-                        summary_length=summary_length.value or "Orta",
+                        summary_length=summary_length.value or "Medium",
+                        text_coverage=text_coverage.value or "Full",
                     )
                 else:
                     result = backend_adapter.summarize_pdf(
                         pdf_path=book.file_path,
-                        summary_length=summary_length.value or "Orta",
+                        summary_length=summary_length.value or "Medium",
+                        text_coverage=text_coverage.value or "Full",
                     )
                 if result.success:
                     summary_content.value = result.summary
                     on_summary_saved(book.id, result.summary)
                     status_text.value = (
-                        "✓ Özet cache'den yüklendi." if result.from_cache
-                        else "✓ Özet başarıyla oluşturuldu."
+                        "✓ Summary loaded from cache." if result.from_cache
+                        else "✓ Summary generated successfully."
                     )
                     status_text.color = SUCCESS
                 else:
                     status_text.value = result.message
                     status_text.color = ERROR
             except Exception as error:  # pylint: disable=broad-except
-                status_text.value = f"Özetleme hatası: {error}"
+                status_text.value = f"Summarization error: {error}"
                 status_text.color = ERROR
             finally:
                 loader.visible = False
@@ -220,7 +233,7 @@ def build_book_dialog(
             height=560,
             content=ft.Column(
                 controls=[
-                    ft.Text("Kitap / Görsel Metni", weight=ft.FontWeight.BOLD, size=14),
+                    ft.Text("Book / Image Text", weight=ft.FontWeight.BOLD, size=14),
                     ft.Container(
                         height=160,
                         padding=10,
@@ -229,11 +242,13 @@ def build_book_dialog(
                         content=ft.ListView([text_content], auto_scroll=False),
                     ),
                     pagination_row,
-                    ft.Text("Özet Uzunluğu", weight=ft.FontWeight.BOLD, size=14),
-                    ft.Row([summary_length, summarize_btn, loader]),
+                    ft.Text("Summary Length", weight=ft.FontWeight.BOLD, size=14),
+                    summary_length,
+                    ft.Text("Text Coverage", weight=ft.FontWeight.BOLD, size=14),
+                    ft.Row([text_coverage, summarize_btn, loader]),
                     status_text,
                     ft.Row([
-                        ft.Text("Özet", weight=ft.FontWeight.BOLD, size=14),
+                        ft.Text("Summary", weight=ft.FontWeight.BOLD, size=14),
                         copy_btn,
                     ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
                     ft.Container(
@@ -247,7 +262,7 @@ def build_book_dialog(
                 scroll=ft.ScrollMode.AUTO,
             ),
         ),
-        actions=[ft.TextButton("Kapat", on_click=lambda _: page.pop_dialog())],
+        actions=[ft.TextButton("Close", on_click=lambda _: page.pop_dialog())],
         actions_alignment=ft.MainAxisAlignment.END,
     )
     return dialog
