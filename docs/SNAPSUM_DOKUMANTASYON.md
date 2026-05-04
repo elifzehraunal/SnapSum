@@ -56,7 +56,7 @@ SnapSum projesinde ekip üyelerinin üstlendiği temel roller ve sorumluluklar a
 
 ### 📸 Fatma (Veri İşleme & Test)
 **Rol:** Veri Kalitesi ve Doğrulama
-- **Metin Hazırlığı & Temizlik:** Hazır verilecek 20 kitabın PDF'lerini bulmak, içlerindeki resim/tablo gibi fazlalıkları temizleyip saf metni haline getirmek.
+- **Metin Hazırlığı & Temizlik:** Hazır verilecek 20 kitabın PDF'lerini bulmak, içlerindeki resim/tablo gibi fazlalıkları temizleyip saf metin haline getirmek.
 - **Test ve Demo:** Uygulamayı farklı uzunluktaki metinlerle test ederek hataları ayıklamak; sunum için demo videoları ve ekran görüntüleri hazırlamak.
 - **Doğruluk Kontrolü:** Gemini'den gelen özetlerin seçilen uzunluklara (kısa/orta/uzun) uygunluğunu ve Türkçe karakterlerin düzgün göründüğünü denetlemek.
 
@@ -101,28 +101,8 @@ SnapSum/
 ├── cleaned_texts/  # Temizlenmiş kitap metinleri
 ├── docs/           # Dökümantasyon dosyaları
 ├── tests/          # Test senaryoları
-└── README.md       # Ana döküman
+└── README.md       # Ana döküman (Bu dosya veya referans)
 ```
-
----
-
-## 🧪 Kurulum ve Çalıştırma
-
-1. **Depoyu klonlayın:**
-   ```bash
-   git clone https://github.com/elifzehraunal/SnapSum
-   cd SnapSum
-   ```
-
-2. **Gerekli kütüphaneleri yükleyin:**
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-3. **Uygulamayı çalıştırın:**
-   ```bash
-   python mobile/main.py
-   ```
 
 ---
 

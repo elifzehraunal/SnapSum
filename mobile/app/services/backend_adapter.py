@@ -1,11 +1,7 @@
 """Bridge layer between mobile UI and backend manager.
 
-UI tarafını backend implementasyonundan ayırır. Gelecekte OCR, HTTP API
-eklendiğinde bu adapter güncellenerek aynı arayüz korunur.
-
-DB entegrasyonu:
-  - summarize_pdf / summarize_image çağrılmadan önce DB'de özet aranır.
-  - Yeni özet üretilirse hem DB'ye hem de eski JSON cache'e yazılır.
+UI tarafını backend implementasyonundan ayırır. Gelecekte OCR, gerçek DB veya
+HTTP API eklendiğinde bu adapter güncellenerek aynı arayüz korunur.
 """
 
 from __future__ import annotations
@@ -14,7 +10,9 @@ from dataclasses import dataclass
 import os
 from pathlib import Path
 import sys
-from typing import Any
+from typing import Any, Dict, List
+
+from app.config import MISTRAL_API_KEY
 
 
 @dataclass
@@ -27,27 +25,8 @@ class SummaryResult:
     from_cache: bool = False
 
 
-@dataclass
-class UserProfile:
-    """Kullanıcının okuma profili ve karakter bilgisi."""
-    character_name: str
-    description: str
-    dominant_category: str
-    category_counts: dict
-
-
 class BackendAdapter:
     """Mobile-facing adapter for backend manager usage."""
-
-    # Okuyucu karakterleri (kategori → karakter)
-    _CHARACTERS: dict[str, tuple[str, str]] = {
-        "Bilim":   ("Kaşif",      "Bilimi seven, meraklı bir okuyucu."),
-        "Tarih":   ("Tarihçi",    "Geçmişten ders çıkaran bir okuyucu."),
-        "Dram":    ("Empatist",   "Duyguları derinlemesine hisseden bir okuyucu."),
-        "Macera":  ("Maceracı",   "Heyecanı seven, cesur bir okuyucu."),
-        "Felsefe": ("Düşünür",    "Hayatın anlamını sorgulayan bir okuyucu."),
-        "Genel":   ("Çok Yönlü",  "Her türden kitap okuyan dengeli bir okuyucu."),
-    }
 
     def __init__(self) -> None:
         self._backend: Any | None = None
@@ -59,67 +38,40 @@ class BackendAdapter:
             sys.path.append(str(repo_root))
 
         cache_path = repo_root / "backend" / "database" / "summary_cache.json"
-        api_key = os.getenv("GEMINI_API_KEY", "")
+        api_key = os.getenv("MISTRAL_API_KEY", MISTRAL_API_KEY)
 
         try:
             from backend.backend_manager import BackendManager
+            from backend.recommendation.engine import RecommendationEngine
+
             self._backend = BackendManager(
                 cache_path=cache_path,
-                gemini_api_key=api_key,
+                mistral_api_key=api_key,
             )
+            self._recommendation_engine = RecommendationEngine()
         except Exception:
             self._backend = None
+            self._recommendation_engine = None
 
     @property
     def available(self) -> bool:
         return self._backend is not None
 
-    # ------------------------------------------------------------------
-    # Summarization (DB-first cache check)
-    # ------------------------------------------------------------------
+    def extract_text(self, pdf_path: str | Path) -> str:
+        if not self._backend:
+            return ""
+        return self._backend.extract_plain_text(pdf_path)
 
-    def summarize(
-        self,
-        file_path: str | Path,
-        summary_type: str,
-        book_id: str | None = None,
-        repository=None,
-    ) -> SummaryResult:
-        """Özetle. Önce DB'de ara, yoksa Gemini'ye sor ve DB'ye kaydet."""
-
-        # 1) DB cache kontrolü
-        if book_id and repository:
-            cached = repository.get_summary(book_id, summary_type)
-            if cached:
-                return SummaryResult(
-                    success=True,
-                    message="Özet veritabanından getirildi.",
-                    summary=cached,
-                    from_cache=True,
-                )
-
-        # 2) Backend mevcut değilse hata döndür
+    def summarize_pdf(self, pdf_path: str | Path, summary_length: str) -> SummaryResult:
         if not self._backend:
             return SummaryResult(
                 success=False,
                 message=(
-                    "Backend manager yüklenemedi. "
-                    "backend/backend_manager.py dosyasını kontrol edin."
+                    "Backend manager yüklenemedi. backend/backend_manager.py "
+                    "dosyasını ve bağımlılıkları kontrol edin."
                 ),
             )
-
-        # 3) Gemini ile özetle
-        path = Path(file_path)
-        suffix = path.suffix.lower()
-        if suffix in (".jpg", ".jpeg", ".png"):
-            result = self._backend.summarize_image(path, summary_type)
-        else:
-            result = self._backend.summarize_pdf(path, summary_type)
-
-        # 4) Başarılıysa DB'ye kaydet
-        if result.success and result.summary and book_id and repository:
-            repository.save_summary(book_id, summary_type, result.summary)
-
+        result = self._backend.summarize_pdf(pdf_path=pdf_path, summary_length=summary_length)
         return SummaryResult(
             success=result.success,
             message=result.message,
@@ -127,45 +79,31 @@ class BackendAdapter:
             from_cache=result.from_cache,
         )
 
-    # Geriye dönük uyumluluk için eski arayüz
-    def summarize_pdf(self, pdf_path: str | Path, summary_length: str) -> SummaryResult:
-        return self.summarize(pdf_path, summary_length)
+    def summarize_image(self, image_path: str | Path, summary_length: str) -> SummaryResult:
+        if not self._backend:
+            return SummaryResult(success=False, message="Backend manager yüklenemedi.")
+        result = self._backend.summarize_image(image_path=image_path, summary_length=summary_length)
+        return SummaryResult(
+            success=result.success,
+            message=result.message,
+            summary=result.summary,
+            from_cache=result.from_cache,
+        )
 
-    # ------------------------------------------------------------------
-    # Category & title classification
-    # ------------------------------------------------------------------
+    def get_user_profile(self, personal_books: List[Any]) -> Any:
+        """Get the user profile from reading history."""
+        if not self._recommendation_engine:
+            return None
+        return self._recommendation_engine.analyze_history(personal_books)
+
+    def get_recommendations(self, profile: Any, general_library: List[Any]) -> List[Any]:
+        """Get book recommendations based on user profile."""
+        if not self._recommendation_engine or not profile:
+            return []
+        return self._recommendation_engine.get_recommendations(profile, general_library)
 
     def categorize_title(self, title: str) -> str:
-        """Gemini ile kitap başlığına göre kategori belirle."""
+        """Categorize a book title using Mistral."""
         if not self._backend:
             return "Genel"
         return self._backend.categorize_title(title)
-
-    # ------------------------------------------------------------------
-    # User profile & recommendations
-    # ------------------------------------------------------------------
-
-    def get_user_profile(self, personal_books: list) -> UserProfile | None:
-        """Kişisel kütüphaneden okuyucu karakteri üret."""
-        if not personal_books:
-            return None
-
-        counts: dict[str, int] = {}
-        for book in personal_books:
-            cat = getattr(book, "category", "Genel")
-            counts[cat] = counts.get(cat, 0) + 1
-
-        dominant = max(counts, key=counts.get)
-        char_name, char_desc = self._CHARACTERS.get(dominant, ("Okuyucu", "Dengeli bir okuyucu."))
-        return UserProfile(
-            character_name=char_name,
-            description=char_desc,
-            dominant_category=dominant,
-            category_counts=counts,
-        )
-
-    def get_recommendations(self, profile: UserProfile, general_books: list) -> list:
-        """Profile göre genel kütüphaneden kitap öner."""
-        same_cat = [b for b in general_books if getattr(b, "category", "") == profile.dominant_category]
-        others   = [b for b in general_books if getattr(b, "category", "") != profile.dominant_category]
-        return (same_cat + others)[:6]
