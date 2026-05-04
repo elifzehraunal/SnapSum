@@ -118,7 +118,7 @@ def main(page: ft.Page) -> None:
 
     # ── UI State / widgets ──
     search_field = ft.TextField(
-        hint_text="Kitap veya kategori ara…",
+        hint_text="Search book or category...",
         prefix_icon=ft.Icons.SEARCH,
         border_radius=12,
         height=44,
@@ -129,16 +129,16 @@ def main(page: ft.Page) -> None:
     personal_list = ft.ListView(expand=True, spacing=6)
 
     # Upload tab
-    upload_status = ft.Text("Henüz dosya seçilmedi.", color=TEXT_SECONDARY, size=13)
+    upload_status = ft.Text("No file selected yet.", color=TEXT_SECONDARY, size=13)
     file_path_input = ft.TextField(
-        label="Dosya Yolu",
-        hint_text="Örn: /Users/.../kitap.pdf veya .jpg",
+        label="File Path",
+        hint_text="e.g., C:/.../book.pdf or .jpg",
         border_radius=12,
     )
 
     # Profile tab
-    profile_title = ft.Text("Profil Bilgisi", size=20, weight=ft.FontWeight.BOLD)
-    profile_desc = ft.Text("Henüz yeterli veri yok.", color=TEXT_SECONDARY)
+    profile_title = ft.Text("Profile Info", size=20, weight=ft.FontWeight.BOLD)
+    profile_desc = ft.Text("Not enough data yet.", color=TEXT_SECONDARY)
     stats_row = ft.Row(spacing=10)
     category_bars = ft.Column(spacing=6)
     recommendations_list = ft.ListView(expand=True, spacing=6)
@@ -153,7 +153,7 @@ def main(page: ft.Page) -> None:
 
     def delete_book(book: Book) -> None:
         db.delete_book(book.id)
-        show_snackbar(f"'{book.title}' silindi.", ERROR)
+        show_snackbar(f"'{book.title}' deleted.", ERROR)
         refresh_all()
 
     def build_book_tile(book: Book, deletable: bool = False) -> ft.Control:
@@ -161,7 +161,7 @@ def main(page: ft.Page) -> None:
         cat_icon = CAT_ICONS.get(book.category, ft.Icons.AUTO_STORIES)
         parts = [book.category]
         if book.summary:
-            parts.append("✓ Özet mevcut")
+            parts.append("✓ Summary available")
 
         trailing_controls: list[ft.Control] = []
         if deletable:
@@ -171,7 +171,7 @@ def main(page: ft.Page) -> None:
                     icon_color=ERROR,
                     icon_size=18,
                     on_click=lambda _, b=book: delete_book(b),
-                    tooltip="Sil",
+                    tooltip="Delete",
                 )
             )
         trailing_controls.append(ft.Icon(ft.Icons.CHEVRON_RIGHT, color=TEXT_SECONDARY))
@@ -226,12 +226,12 @@ def main(page: ft.Page) -> None:
         general_list.controls = (
             [build_book_tile(b) for b in general_books]
             if general_books
-            else [_empty(ft.Icons.LIBRARY_BOOKS, "Sonuç bulunamadı" if query else "Kütüphane boş")]
+            else [_empty(ft.Icons.LIBRARY_BOOKS, "No results found" if query else "Library is empty")]
         )
         personal_list.controls = (
             [build_book_tile(b, deletable=True) for b in personal_books]
             if personal_books
-            else [_empty(ft.Icons.ADD_CIRCLE_OUTLINE, "Henüz kitap eklenmedi")]
+            else [_empty(ft.Icons.ADD_CIRCLE_OUTLINE, "No books added yet")]
         )
 
     def refresh_library_and_update() -> None:
@@ -244,8 +244,8 @@ def main(page: ft.Page) -> None:
         profile = backend_adapter.get_user_profile(personal_books)
 
         stats_row.controls = [
-            _stat_card("Kitap", str(len(personal_books)), ft.Icons.MENU_BOOK),
-            _stat_card("Özet", str(summarized), ft.Icons.SUMMARIZE),
+            _stat_card("Book", str(len(personal_books)), ft.Icons.MENU_BOOK),
+            _stat_card("Summary", str(summarized), ft.Icons.SUMMARIZE),
         ]
 
         if profile:
@@ -277,7 +277,7 @@ def main(page: ft.Page) -> None:
             recommendations_list.controls = (
                 [build_book_tile(b) for b in recs]
                 if recs
-                else [_empty(ft.Icons.RECOMMEND, "Henüz öneri yok")]
+                else [_empty(ft.Icons.RECOMMEND, "No recommendations yet")]
             )
 
     def refresh_all() -> None:
@@ -304,12 +304,12 @@ def main(page: ft.Page) -> None:
         elif getattr(picked, "bytes", None):
             target.write_bytes(picked.bytes)
         else:
-            upload_status.value = "Fotoğraf okunamadı."
+            upload_status.value = "Could not read photo."
             page.update()
             return
 
         new_book = Book(
-            title=f"Fotoğraf ({target.name[:5]})",
+            title=f"Photo ({target.name[:5]})",
             file_path=str(target),
             source="personal",
             category="Genel",
@@ -330,7 +330,7 @@ def main(page: ft.Page) -> None:
             with_data=True,
         )
         if not files:
-            upload_status.value = "Dosya seçimi iptal edildi."
+            upload_status.value = "File selection cancelled."
             page.update()
             return
 
@@ -339,7 +339,7 @@ def main(page: ft.Page) -> None:
 
         if picked.path:
             file_path_input.value = picked.path
-            upload_status.value = f"Seçilen dosya: {picked.name}"
+            upload_status.value = f"Selected file: {picked.name}"
             page.update()
             return
 
@@ -348,33 +348,33 @@ def main(page: ft.Page) -> None:
             target = UPLOADS_DIR / f"{Path(picked.name).stem}_{uuid.uuid4().hex[:8]}{ext}"
             target.write_bytes(file_bytes)
             file_path_input.value = str(target)
-            upload_status.value = f"Seçilen dosya: {picked.name}"
+            upload_status.value = f"Selected file: {picked.name}"
         else:
-            upload_status.value = "Dosya okunamadı."
+            upload_status.value = "File could not be read."
         page.update()
 
     def handle_upload(_: ft.ControlEvent) -> None:
         source_path = (file_path_input.value or "").strip().strip('"')
         if not source_path:
-            show_snackbar("Lütfen geçerli bir dosya yolu girin.", WARNING)
+            show_snackbar("Please enter a valid file path.", ERROR)
             return
 
         source = Path(source_path)
         if source.suffix.lower() not in [".pdf", ".jpg", ".jpeg", ".png"]:
-            show_snackbar("Sadece PDF veya Resim dosyaları destekleniyor.", WARNING)
+            show_snackbar("Only PDF or Image files are supported.", ERROR)
             return
 
         try:
             target = UPLOADS_DIR / f"{source.stem}_{uuid.uuid4().hex[:8]}{source.suffix.lower()}"
             shutil.copy2(source, target)
         except FileNotFoundError:
-            show_snackbar(f"Dosya bulunamadı: {source.name}", ERROR)
+            show_snackbar(f"File not found: {source.name}", ERROR)
             return
         except PermissionError:
-            show_snackbar("Dosya erişim izni reddedildi.", ERROR)
+            show_snackbar("File access denied.", ERROR)
             return
         except Exception as err:
-            show_snackbar(f"Dosya kopyalama hatası: {err}", ERROR)
+            show_snackbar(f"File copy error: {err}", ERROR)
             return
 
         new_book = Book(
@@ -386,8 +386,8 @@ def main(page: ft.Page) -> None:
         db.add_book(new_book)
 
         file_path_input.value = ""
-        upload_status.value = "Henüz dosya seçilmedi."
-        show_snackbar(f"✓ '{source.name}' kütüphaneye eklendi!", SUCCESS)
+        upload_status.value = "No file selected yet."
+        show_snackbar(f"✓ '{source.name}' added to library!", SUCCESS)
         refresh_all()
 
     # ══════════════════════════
@@ -408,7 +408,7 @@ def main(page: ft.Page) -> None:
             ft.Container(padding=ft.Padding(left=16, right=16, top=0, bottom=0), content=search_field),
             ft.Container(
                 padding=ft.Padding(left=16, right=16, top=0, bottom=0),
-                content=ft.Text("Genel Kütüphane", weight=ft.FontWeight.BOLD, size=15),
+                content=ft.Text("General Library", weight=ft.FontWeight.BOLD, size=15),
             ),
             ft.Container(
                 height=230, margin=ft.Margin(left=12, right=12, top=0, bottom=0),
@@ -418,7 +418,7 @@ def main(page: ft.Page) -> None:
             ),
             ft.Container(
                 padding=ft.Padding(left=16, right=16, top=0, bottom=0),
-                content=ft.Text("Şahsi Kütüphanem", weight=ft.FontWeight.BOLD, size=15),
+                content=ft.Text("My Personal Library", weight=ft.FontWeight.BOLD, size=15),
             ),
             ft.Container(
                 height=230, margin=ft.Margin(left=12, right=12, top=0, bottom=0),
@@ -436,19 +436,19 @@ def main(page: ft.Page) -> None:
         padding=ft.Padding(left=20, right=20, top=10, bottom=10),
         content=ft.Column(
             [
-                ft.Text("PDF veya Resim Yükle", size=18, weight=ft.FontWeight.BOLD),
+                ft.Text("Upload PDF or Image", size=18, weight=ft.FontWeight.BOLD),
                 ft.Text(
-                    "Metin tabanlı PDF veya fotoğraf (OCR) yükleyerek kütüphanenize ekleyin.",
+                    "Add text-based PDF or photo (OCR) to your library.",
                     color=TEXT_SECONDARY, size=13,
                 ),
                 ft.Row(
                     [
-                        ft.OutlinedButton("Dosya Seç", icon=ft.Icons.FOLDER_OPEN, on_click=pick_file),
-                        ft.OutlinedButton("Fotoğraf Çek", icon=ft.Icons.CAMERA_ALT, on_click=take_photo_and_summarize),
+                        ft.OutlinedButton("Choose File", icon=ft.Icons.FOLDER_OPEN, on_click=pick_file),
+                        ft.OutlinedButton("Take Photo", icon=ft.Icons.CAMERA_ALT, on_click=take_photo_and_summarize),
                     ]
                 ),
                 file_path_input,
-                ft.Button("Kütüphaneye Ekle", icon=ft.Icons.ADD, on_click=handle_upload),
+                ft.Button("Add to Library", icon=ft.Icons.ADD, on_click=handle_upload),
                 upload_status,
             ],
             spacing=16,
@@ -486,7 +486,7 @@ def main(page: ft.Page) -> None:
             ft.Divider(),
             ft.Container(
                 padding=ft.Padding(left=20, right=20, top=0, bottom=0),
-                content=ft.Text("Sizin İçin Önerilenler", weight=ft.FontWeight.BOLD, size=15),
+                content=ft.Text("Recommended For You", weight=ft.FontWeight.BOLD, size=15),
             ),
             ft.Container(
                 height=320, margin=ft.Margin(left=12, right=12, top=0, bottom=0),
@@ -514,9 +514,9 @@ def main(page: ft.Page) -> None:
 
     page.navigation_bar = ft.NavigationBar(
         destinations=[
-            ft.NavigationBarDestination(icon=ft.Icons.LIBRARY_BOOKS, label="Kütüphane"),
-            ft.NavigationBarDestination(icon=ft.Icons.UPLOAD_FILE, label="Yükle"),
-            ft.NavigationBarDestination(icon=ft.Icons.PERSON, label="Profilim"),
+            ft.NavigationBarDestination(icon=ft.Icons.LIBRARY_BOOKS, label="Library"),
+            ft.NavigationBarDestination(icon=ft.Icons.UPLOAD_FILE, label="Upload"),
+            ft.NavigationBarDestination(icon=ft.Icons.PERSON, label="Profile"),
         ],
         on_change=on_nav_change,
     )

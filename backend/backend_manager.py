@@ -29,7 +29,8 @@ except Exception:
 
 MISTRAL_API_URL = "https://api.mistral.ai/v1/chat/completions"
 
-SummaryLength = Literal["Kısa", "Orta", "Uzun"]
+SummaryLength = Literal["Short", "Medium", "Long"]
+TextCoverage = Literal["Quarter", "Half", "Full"]
 
 
 @dataclass
@@ -45,11 +46,11 @@ class BackendResponse:
 class BackendManager:
     """Main business logic class for PDF summarization flow."""
 
-    # Özet moduna göre metnin ne kadarını işleyeceğimizi belirle
+    # Define how much text to process based on summary mode
     TEXT_LIMITS: dict[str, int] = {
-        "Kısa": 50_000,    # ~50K karakter yeterli
-        "Orta": 150_000,   # ~150K karakter
-        "Uzun": 500_000,   # ~500K karakter
+        "Short": 50_000,    # ~50K characters
+        "Medium": 150_000,   # ~150K characters
+        "Long": 500_000,   # ~500K characters
     }
 
     def __init__(
@@ -89,7 +90,7 @@ class BackendManager:
             "model": model or self.model_name,
             "messages": [{"role": "user", "content": prompt}],
         }
-        resp = httpx.post(MISTRAL_API_URL, json=payload, headers=headers, timeout=120)
+        resp = httpx.post(MISTRAL_API_URL, json=payload, headers=headers, timeout=300.0)
         resp.raise_for_status()
         data = resp.json()
         return (data["choices"][0]["message"]["content"] or "").strip()
@@ -120,7 +121,7 @@ class BackendManager:
                 }
             ],
         }
-        resp = httpx.post(MISTRAL_API_URL, json=payload, headers=headers, timeout=120)
+        resp = httpx.post(MISTRAL_API_URL, json=payload, headers=headers, timeout=300.0)
         resp.raise_for_status()
         data = resp.json()
         return (data["choices"][0]["message"]["content"] or "").strip()
@@ -134,7 +135,7 @@ class BackendManager:
         """
         path = Path(pdf_path)
         if not path.exists():
-            raise FileNotFoundError(f"Dosya bulunamadı: {path}")
+            raise FileNotFoundError(f"File not found: {path}")
 
         if path.suffix.lower() == ".txt":
             raw_text = path.read_text(encoding="utf-8", errors="replace")
@@ -259,24 +260,24 @@ class BackendManager:
     # ----------------------------
     def _instruction_for(self, summary_length: SummaryLength) -> str:
         prompts = {
-            "Kısa": (
+            "Short": (
                 "Metni tek bir paragrafta, en can alici noktalarla, "
                 "akici ve sade bir Turkce ile ozetle."
             ),
-            "Orta": (
+            "Medium": (
                 "Metni ana basliklar halinde, 5-10 madde ile ozetle. "
                 "Her maddede kritik fikirleri koru."
             ),
-            "Uzun": (
+            "Long": (
                 "Metnin tum bolumlerini kapsayan detayli bir analiz sun. "
                 "Ana fikirler, argumanlar ve onemli detaylari sistematik anlat."
             ),
         }
         return prompts[summary_length]
 
-    def _cache_key(self, pdf_path: str | Path, summary_length: SummaryLength) -> str:
+    def _cache_key(self, pdf_path: str | Path, summary_length: SummaryLength, text_coverage: TextCoverage = "Full") -> str:
         path = Path(pdf_path)
-        payload = f"{path.resolve()}::{summary_length}::{self.model_name}".encode("utf-8")
+        payload = f"{path.resolve()}::{summary_length}::{text_coverage}::{self.model_name}".encode("utf-8")
         return sha256(payload).hexdigest()
 
     def _load_cache(self) -> dict[str, dict]:
@@ -295,18 +296,21 @@ class BackendManager:
         self,
         pdf_path: str | Path,
         summary_length: SummaryLength,
+        text_coverage: TextCoverage = "Full",
     ) -> BackendResponse:
         """Complete flow: cache check -> extract -> chunk -> Mistral map-reduce."""
         try:
-            if summary_length not in ("Kısa", "Orta", "Uzun"):
-                return BackendResponse(False, "Geçersiz özet uzunluğu seçimi.")
+            if summary_length not in ("Short", "Medium", "Long"):
+                return BackendResponse(False, "Invalid summary length selection.")
+            if text_coverage not in ("Quarter", "Half", "Full"):
+                return BackendResponse(False, "Invalid text coverage selection.")
 
-            cache_key = self._cache_key(pdf_path, summary_length)
+            cache_key = self._cache_key(pdf_path, summary_length, text_coverage)
             cache = self._load_cache()
             if cache_key in cache and cache[cache_key].get("summary"):
                 return BackendResponse(
                     success=True,
-                    message="Özet cache üzerinden getirildi.",
+                    message="Summary loaded from cache.",
                     summary=cache[cache_key]["summary"],
                     from_cache=True,
                 )
@@ -314,28 +318,27 @@ class BackendManager:
             if not self.mistral_api_key:
                 return BackendResponse(
                     success=False,
-                    message=(
-                        "Mistral API anahtarı tanımlı değil. "
-                        "Lütfen .env dosyasına MISTRAL_API_KEY ekleyin."
-                    ),
+                    message="Mistral API key is missing. Please add MISTRAL_API_KEY to .env.",
                 )
             if not self._ready:
                 return BackendResponse(
                     success=False,
-                    message=(
-                        "Mistral istemcisi başlatılamadı. API anahtarı geçersiz veya "
-                        "bağlantı sorunu olabilir."
-                    ),
+                    message="Mistral client could not be initialized.",
                 )
 
             text = self.extract_plain_text(pdf_path)
             if not text:
                 return BackendResponse(
                     success=False,
-                    message="PDF içinde okunabilir metin bulunamadı.",
+                    message="No readable text found in PDF.",
                 )
 
-            # Özet moduna göre metni sınırla (hız optimizasyonu)
+            total_len = len(text)
+            if text_coverage == "Quarter":
+                text = text[:total_len // 4]
+            elif text_coverage == "Half":
+                text = text[:total_len // 2]
+
             text_limit = self.TEXT_LIMITS.get(summary_length, 500_000)
             if len(text) > text_limit:
                 text = text[:text_limit]
@@ -359,7 +362,7 @@ class BackendManager:
             if not partials:
                 return BackendResponse(
                     success=False,
-                    message="Mistral yanıtı boş döndü. Lütfen tekrar deneyin.",
+                    message="Mistral response was empty. Please try again.",
                 )
 
             # REDUCE step: parçaları master özete dönüştür
@@ -378,7 +381,7 @@ class BackendManager:
             if not master_summary:
                 return BackendResponse(
                     success=False,
-                    message="Master özet üretilemedi. Lütfen tekrar deneyin.",
+                    message="Could not generate master summary. Please try again.",
                 )
 
             cache[cache_key] = {
@@ -391,45 +394,39 @@ class BackendManager:
 
             return BackendResponse(
                 success=True,
-                message="Özet başarıyla oluşturuldu.",
+                message="Summary generated successfully.",
                 summary=master_summary,
                 from_cache=False,
             )
 
         except FileNotFoundError as error:
-            return BackendResponse(False, f"PDF okunamadı: {error}")
+            return BackendResponse(False, f"Could not read PDF: {error}")
         except ConnectionError:
-            return BackendResponse(
-                False,
-                "İnternet bağlantısı hatası. Lütfen bağlantınızı kontrol edin.",
-            )
-        except TimeoutError:
-            return BackendResponse(
-                False,
-                "Mistral isteği zaman aşımına uğradı. Tekrar deneyin.",
-            )
-        except Exception as error:  # kapsamlı güvenlik ağı
-            return BackendResponse(
-                False,
-                f"Beklenmeyen bir hata oluştu: {error}",
-            )
+            return BackendResponse(False, "Internet connection error.")
+        except (TimeoutError, httpx.TimeoutException):
+            return BackendResponse(False, "Mistral request timed out.")
+        except Exception as error:
+            return BackendResponse(False, f"Unexpected error: {error}")
 
     def summarize_image(
         self,
         image_path: str | Path,
         summary_length: SummaryLength,
+        text_coverage: TextCoverage = "Full",
     ) -> BackendResponse:
         """Extract text from image and summarize using Mistral Vision (Pixtral)."""
         try:
-            if summary_length not in ("Kısa", "Orta", "Uzun"):
-                return BackendResponse(False, "Geçersiz özet uzunluğu seçimi.")
+            if summary_length not in ("Short", "Medium", "Long"):
+                return BackendResponse(False, "Invalid summary length selection.")
+            if text_coverage not in ("Quarter", "Half", "Full"):
+                return BackendResponse(False, "Invalid text coverage selection.")
 
-            cache_key = self._cache_key(image_path, summary_length)
+            cache_key = self._cache_key(image_path, summary_length, text_coverage)
             cache = self._load_cache()
             if cache_key in cache and cache[cache_key].get("summary"):
                 return BackendResponse(
                     success=True,
-                    message="Özet cache üzerinden getirildi.",
+                    message="Summary loaded from cache.",
                     summary=cache[cache_key]["summary"],
                     from_cache=True,
                 )
@@ -437,12 +434,12 @@ class BackendManager:
             if not self._ready:
                 return BackendResponse(
                     success=False,
-                    message="Mistral istemcisi yüklenemedi.",
+                    message="Mistral client could not be loaded.",
                 )
 
             path = Path(image_path)
             if not path.exists():
-                return BackendResponse(False, f"Görsel bulunamadı: {path}")
+                return BackendResponse(False, f"Image not found: {path}")
 
             # Görseli base64 formatına çevir
             image_data = path.read_bytes()
@@ -472,7 +469,7 @@ class BackendManager:
             if not master_summary:
                 return BackendResponse(
                     success=False,
-                    message="Görselden özet üretilemedi.",
+                    message="Could not generate summary from image.",
                 )
 
             cache[cache_key] = {
@@ -485,14 +482,16 @@ class BackendManager:
 
             return BackendResponse(
                 success=True,
-                message="Görsel başarıyla özetlendi.",
+                message="Image summarized successfully.",
                 summary=master_summary,
                 from_cache=False,
             )
 
         except FileNotFoundError as error:
-            return BackendResponse(False, f"Dosya okunamadı: {error}")
+            return BackendResponse(False, f"File could not be read: {error}")
         except ConnectionError:
-            return BackendResponse(False, "İnternet bağlantısı hatası.")
+            return BackendResponse(False, "Internet connection error.")
+        except (TimeoutError, httpx.TimeoutException):
+            return BackendResponse(False, "Mistral request timed out.")
         except Exception as error:
-            return BackendResponse(False, f"Beklenmeyen bir hata oluştu: {error}")
+            return BackendResponse(False, f"Unexpected error: {error}")
