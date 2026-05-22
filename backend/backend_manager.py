@@ -295,15 +295,38 @@ class BackendManager:
     def summarize_pdf(
         self,
         pdf_path: str | Path,
-        summary_length: SummaryLength,
-        text_coverage: TextCoverage = "Full",
+        summary_length: str,
+        text_coverage: str = "Full",
     ) -> BackendResponse:
         """Complete flow: cache check -> extract -> chunk -> Mistral map-reduce."""
         try:
+            # Normalize summary_length
+            length_map = {
+                "kısa": "Short",
+                "orta": "Medium",
+                "uzun": "Long",
+                "short": "Short",
+                "medium": "Medium",
+                "long": "Long"
+            }
+            summary_length = length_map.get(str(summary_length).lower(), "Medium")
+
+            # Normalize text_coverage
+            coverage_map = {
+                "çeyrek": "Quarter",
+                "yarım": "Half",
+                "tam": "Full",
+                "quarter": "Quarter",
+                "half": "Half",
+                "full": "Full"
+            }
+            text_coverage = coverage_map.get(str(text_coverage).lower(), "Full")
+
             if summary_length not in ("Short", "Medium", "Long"):
                 return BackendResponse(False, "Invalid summary length selection.")
             if text_coverage not in ("Quarter", "Half", "Full"):
                 return BackendResponse(False, "Invalid text coverage selection.")
+
 
             cache_key = self._cache_key(pdf_path, summary_length, text_coverage)
             cache = self._load_cache()
@@ -411,15 +434,38 @@ class BackendManager:
     def summarize_image(
         self,
         image_path: str | Path,
-        summary_length: SummaryLength,
-        text_coverage: TextCoverage = "Full",
+        summary_length: str,
+        text_coverage: str = "Full",
     ) -> BackendResponse:
         """Extract text from image and summarize using Mistral Vision (Pixtral)."""
         try:
+            # Normalize summary_length
+            length_map = {
+                "kısa": "Short",
+                "orta": "Medium",
+                "uzun": "Long",
+                "short": "Short",
+                "medium": "Medium",
+                "long": "Long"
+            }
+            summary_length = length_map.get(str(summary_length).lower(), "Medium")
+
+            # Normalize text_coverage
+            coverage_map = {
+                "çeyrek": "Quarter",
+                "yarım": "Half",
+                "tam": "Full",
+                "quarter": "Quarter",
+                "half": "Half",
+                "full": "Full"
+            }
+            text_coverage = coverage_map.get(str(text_coverage).lower(), "Full")
+
             if summary_length not in ("Short", "Medium", "Long"):
                 return BackendResponse(False, "Invalid summary length selection.")
             if text_coverage not in ("Quarter", "Half", "Full"):
                 return BackendResponse(False, "Invalid text coverage selection.")
+
 
             cache_key = self._cache_key(image_path, summary_length, text_coverage)
             cache = self._load_cache()

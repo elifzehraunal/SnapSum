@@ -5,24 +5,24 @@ from __future__ import annotations
 import flet as ft
 
 # ── Color Palette ──
-PRIMARY = "#6C63FF"
-SECONDARY = "#FF6584"
-SURFACE = "#F5F6FA"
-CARD_BG = "#FFFFFF"
-BORDER = "#E2E2EA"
-TEXT_PRIMARY = "#2D2D3F"
-TEXT_SECONDARY = "#8E8EA0"
-SUCCESS = "#43A047"
-WARNING = "#FB8C00"
-ERROR = "#E53935"
+PRIMARY = "#4F46E5"      # Premium Indigo 600
+SECONDARY = "#EC4899"    # Vibrant Rose 500
+SURFACE = "#F8FAFC"      # Clean Slate 50
+CARD_BG = "#FFFFFF"      # Pure White
+BORDER = "#E2E8F0"       # Soft Slate 200
+TEXT_PRIMARY = "#0F172A" # Dark Slate 900
+TEXT_SECONDARY = "#64748B"# Sakin Slate 500
+SUCCESS = "#10B981"      # Elegant Emerald 500
+WARNING = "#F59E0B"      # Warm Amber 500
+ERROR = "#EF4444"        # Clean Red 500
 
 CAT_COLORS = {
-    "Bilim": "#4CAF50",
-    "Tarih": "#FF9800",
-    "Dram": "#E91E63",
-    "Macera": "#2196F3",
-    "Felsefe": "#9C27B0",
-    "Genel": "#607D8B",
+    "Bilim": "#10B981",    # Emerald
+    "Tarih": "#F59E0B",    # Amber
+    "Dram": "#EC4899",     # Rose
+    "Macera": "#06B6D4",   # Cyan
+    "Felsefe": "#8B5CF6",  # Violet
+    "Genel": "#6366F1",    # Indigo
 }
 
 CAT_ICONS = {
@@ -41,3 +41,4 @@ def app_theme() -> ft.Theme:
         use_material3=True,
         color_scheme_seed=PRIMARY,
     )
+

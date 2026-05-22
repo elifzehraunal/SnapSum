@@ -6,7 +6,8 @@
 
 ## 1. 🚀 Proje Hakkında Genel Bakış
 
-SnapSum, yoğun bilgi çağında kullanıcıların metinleri hızlıca anlamlandırmasını sağlar. Google Gemini API kullanarak kitapları ve dökümanları analiz eder, kullanıcı tercihlerine göre farklı uzunluklarda özetler sunar.
+SnapSum, yoğun bilgi çağında kullanıcıların metinleri hızlıca anlamlandırmasını sağlar. Mistral AI API kullanarak kitapları ve dökümanları analiz eder, kullanıcı tercihlerine göre farklı uzunluklarda özetler sunar.
+
 
 ### 🎯 Temel Hedefler
 - Metinlerin hızlı ve etkili bir şekilde anlaşılmasını sağlamak.
@@ -24,41 +25,11 @@ SnapSum, yoğun bilgi çağında kullanıcıların metinleri hızlıca anlamland
 
 ## 2. 👥 Görev Dağılımı ve Sorumluluklar
 
-SnapSum projesinde ekip üyelerinin üstlendiği temel roller ve sorumluluklar aşağıda detaylandırılmıştır.
-
-### 👨‍💻 İbrahim (Backend Dev)
-**Rol:** Backend ve Yapay Zeka Entegrasyonu
-- **Özetleme Sistemi:** Google Gemini API (Öğrenci Planı) bağlantısını kurmak ve özetleme mantığını Python ile yazmak.
-- **Karakter & Metin Algoritması:** Kitap metinlerini Gemini'nin okuma limitlerine göre parçalara bölen (chunking) ve özetleri birleştiren algoritmayı geliştirmek.
-- **Metin Ayıklama (PDF Parsing):** PDF dosyalarından sadece saf metni (plain text) çeken, resimleri ve grafikleri tamamen yok sayan yapıyı kurmak.
-- **Prompt Yönetimi:** "Kısa, Orta, Uzun" seçenekleri için farklılaştırılmış yapay zeka komutlarını (prompts) optimize etmek.
-
-### 📊 Baran (Veritabanı & API)
-**Rol:** Veri Yönetimi ve Güvenlik
-- **Veritabanı Entegrasyonu:** Seçilecek olan veritabanının (Local SQLite, JSON veya Bulut DB) mimarisini kurmak ve Python bağlantısını sağlamak. *(Planlama aşamasında)*
-- **Kütüphane Yönetimi:** 20 adet hazır kitabın ve kullanıcı tarafından yüklenen PDF'lerin veritabanındaki kayıt süreçlerini yönetmek.
-- **Veri Senkronizasyonu:** Uygulama her açıldığında mevcut kitap listesinin ve daha önce çıkarılmış özetlerin veritabanından hızlıca çekilmesini sağlamak.
-- **API Güvenliği:** API anahtarlarının ve veritabanı bilgilerinin güvenli yönetimi için gerekli konfigürasyonları yapmak.
-
-### 📱 Elif (Mobil Dev)
-**Rol:** Mobil Uygulama Geliştirme (Flet)
-- **Mobil Uygulama Arayüzü:** Flet kullanarak uygulamanın ana ekranlarını (Genel Kütüphane, Şahsi Kütüphanem, Yükleme Alanı) kodlamak.
-- **Fonksiyon Entegrasyonu:** İbrahim'in yazdığı özetleme fonksiyonlarını ve Baran'ın veritabanı kodlarını mobil arayüze bağlamak.
-- **Özet Uzunluğu Seçimi:** Kullanıcının kısa, orta veya uzun özet tercihini yapabileceği arayüz bileşenlerini (Buton/Toggle) eklemek.
-- **Dosya Seçici:** Kullanıcının telefon hafızasından PDF seçip sisteme dahil edebileceği dosya gezgini özelliğini entegre etmek.
-
-### 🎨 Sinem (UI/UX)
-**Rol:** Tasarım ve Kullanıcı Deneyimi
-- **Ekran Düzeni:** Metin odaklı bir uygulama olduğu için okuma kolaylığını ön planda tutan minimalist bir ekran tasarımı yapmak.
-- **Kullanıcı Deneyimi (UX):** Kullanıcının kütüphaneler arası geçişini ve özet alma sürecini en basit (en az tıklama ile) hale getirmek.
-- **Geri Bildirim Tasarımı:** Özetleme işlemi sırasında görünecek yükleme animasyonları ve işlem tamamlandı uyarılarını belirlemek.
-- **Görsel Kimlik:** Uygulamanın renk paletini ve tipografisini (metin odaklı olduğu için font seçimi kritik) belirlemek.
-
-### 📸 Fatma (Veri İşleme & Test)
-**Rol:** Veri Kalitesi ve Doğrulama
-- **Metin Hazırlığı & Temizlik:** Hazır verilecek 20 kitabın PDF'lerini bulmak, içlerindeki resim/tablo gibi fazlalıkları temizleyip saf metin haline getirmek.
-- **Test ve Demo:** Uygulamayı farklı uzunluktaki metinlerle test ederek hataları ayıklamak; sunum için demo videoları ve ekran görüntüleri hazırlamak.
-- **Doğruluk Kontrolü:** Gemini'den gelen özetlerin seçilen uzunluklara (kısa/orta/uzun) uygunluğunu ve Türkçe karakterlerin düzgün göründüğünü denetlemek.
+- **İbrahim (Backend Dev):** Yapay Zeka entegrasyonu (Mistral API), Chunking & Map-Reduce algoritması tasarımı, prompt mühendisliği ve PDF/Metin temizleme mantığı (`backend_manager.py`).
+- **Baran (Veritabanı & API):** Uygulama verilerinin SQLite üzerinde yönetimi (`DatabaseManager`), kütüphane ekleme/silme fonksiyonları ve API key konfigürasyonu.
+- **Elif (Mobil Dev):** Flet framework ile uygulamanın mobil/masaüstü reaktif arayüzünün (Library, Upload, Profile sekmeleri) geliştirilmesi, dosya gezgini entegrasyonu ve uygulamanın genel UI navigasyonu (`main.py` ve bileşenler).
+- **Sinem (UI/UX):** Uygulamanın renk paletleri, bileşenlerin konumlandırmaları, kart tasarımları ve genel kullanıcı deneyiminin planlanması.
+- **Fatma (Veri İşleme & Test):** Hazır kütüphanede (`cleaned_texts`) bulunacak kitap metinlerinin hazırlanması, temizlenmesi ve sistemin farklı dosya türleri/büyüklükleriyle test edilmesi.
 
 ---
 
@@ -66,7 +37,7 @@ SnapSum projesinde ekip üyelerinin üstlendiği temel roller ve sorumluluklar a
 
 ### 🧠 Backend (Yapay Zeka & İş Mantığı)
 - **Metin İşleme:** `PyMuPDF` ile PDF'lerden metin ayıklanır, gürültülü veriler (sayfa numaraları, boşluklar vb.) temizlenir.
-- **Map-Reduce Özetleme:** Uzun metinler parçalara (chunks) ayrılır, her parça Gemini ile özetlenir ve sonunda bu özetler tek bir master özet haline getirilir.
+- **Map-Reduce Özetleme:** Uzun metinler parçalara (chunks) ayrılır, her parça Mistral ile özetlenir ve sonunda bu özetler tek bir master özet haline getirilir.
 - **JSON Cache:** Aynı dökümanlar için tekrar API isteği atmamak adına `summary_cache.json` üzerinden yerel depolama yapılır.
 
 ### 📱 Mobil (UI & UX)
@@ -76,18 +47,18 @@ SnapSum projesinde ekip üyelerinin üstlendiği temel roller ve sorumluluklar a
 ### 🏗️ Teknoloji Yığını
 - **UI:** Flet (Python)
 - **Backend:** Python
-- **AI/NLP:** Google Gemini API (gemini-1.5-flash)
-- **Parsing:** PyMuPDF (fitz)
-- **Depolama:** JSON Cache / SQLite (Planlanıyor)
+- **AI/NLP:** Mistral AI API (mistral-small-latest / pixtral-large-latest)
+- **Parsing:** PyMuPDF (fitz) / Plain TXT reader
+- **Depolama:** JSON Cache / SQLite (Aktif)
 
 ---
 
-## 4. 📅 Gelecek Planları (Roadmap)
+## 4. 📅 Tamamlanan Aşamalar ve Geliştirmeler (Completed Features)
 
-- **Tam Veritabanı Entegrasyonu:** Kullanıcı profil verilerinin ve kütüphane kayıtlarının SQLite üzerinde kalıcı hale getirilmesi.
-- **Gelişmiş Öneri Algoritması:** Okuma tercihlerine göre "Okur Karakteri" analizi.
-- **OCR Desteği:** Resim ve fotoğraflar üzerindeki metinleri okuyabilme.
-- **Google Books Entegrasyonu:** Kitap meta-verilerinin otomatik çekilmesi.
+- **Tam SQLite Veritabanı Entegrasyonu:** Kullanıcı profil verileri, kütüphane kayıtları ve çıkarılan özetler SQLite üzerinde kalıcı olarak saklanmaktadır (`snapsum.db`).
+- **Gelişmiş Öneri Motoru (Okur Karakteri Analizi):** Okuma geçmişine ve kitap kategorilerine dayalı dinamik kullanıcı profili ve kişiselleştirilmiş öneri motoru entegre edilmiştir.
+- **OCR & Pixtral Görsel Desteği:** Pixtral Vision API entegrasyonu ile görsellerin (`.png`, `.jpg`, `.jpeg`) doğrudan yapay zeka ile OCR analizi ve özetlenmesi sağlanmıştır.
+- **Çift Dil Desteği:** Türkçe ve İngilizce dilleri arasında dinamik arayüz, profil ve özet desteği tamamen entegre edilmiştir.
 
 ---
 
@@ -106,4 +77,4 @@ SnapSum/
 
 ---
 
-> **Not:** Veritabanı bağlantısı şu an için aktif değildir; ancak mimari Baran tarafından planlanmış ve dökümantasyona dahil edilmiştir.
+> **Not:** Veritabanı bağlantısı Baran tarafından SQLite tabanlı olarak tamamen kurulmuş ve kalıcı depolama arayüzle entegre bir şekilde aktifleştirilmiştir.

@@ -38,7 +38,9 @@ class BackendAdapter:
             sys.path.append(str(repo_root))
 
         cache_path = repo_root / "backend" / "database" / "summary_cache.json"
-        api_key = os.getenv("MISTRAL_API_KEY", MISTRAL_API_KEY)
+        
+        from app.config import get_mistral_api_key
+        api_key = get_mistral_api_key()
 
         try:
             from backend.backend_manager import BackendManager
@@ -53,9 +55,14 @@ class BackendAdapter:
             self._backend = None
             self._recommendation_engine = None
 
+    def reload(self) -> None:
+        """Reload configuration and re-initialize backend manager."""
+        self._load_backend_manager()
+
     @property
     def available(self) -> bool:
         return self._backend is not None
+
 
     def extract_text(self, pdf_path: str | Path) -> str:
         if not self._backend:

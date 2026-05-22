@@ -10,57 +10,77 @@ import flet as ft
 
 from app.models import Book
 from app.services.backend_adapter import BackendAdapter
-from app.ui.theme import PRIMARY, TEXT_SECONDARY, SUCCESS, ERROR
+from app.ui.theme import PRIMARY, SECONDARY, SURFACE, CARD_BG, BORDER, TEXT_SECONDARY, SUCCESS, ERROR
+from app.config import get_ui_language
+from app.services.translations import t
 
 
 def build_summary_dialog(page: ft.Page, book: Book) -> ft.AlertDialog:
     """Create modal dialog for reading an existing summary."""
+    lang = get_ui_language()
     
     def copy_summary(_: ft.ControlEvent) -> None:
         if book.summary:
             page.set_clipboard(book.summary)
-            status_text.value = "✓ Summary copied to clipboard!"
+            status_text.value = t("copied_clipboard", lang)
             status_text.color = SUCCESS
             page.update()
 
     status_text = ft.Text("", size=12)
     copy_btn = ft.IconButton(
-        ft.Icons.COPY,
-        tooltip="Copy Summary",
+        ft.Icons.COPY_ROUNDED,
+        tooltip=t("copy_summary", lang),
         icon_size=20,
+        icon_color=PRIMARY,
         on_click=copy_summary,
     )
 
     summary_content = ft.Text(
-        book.summary or "Summary not found.",
+        book.summary or t("summary_not_generated", lang),
         selectable=True,
         size=14,
+        color="#2D3748",
     )
 
     return ft.AlertDialog(
         modal=True,
-        title=ft.Text(book.title, weight=ft.FontWeight.BOLD),
+        title=ft.Text(
+            book.title, 
+            weight=ft.FontWeight.BOLD, 
+            size=18, 
+            color=PRIMARY,
+            overflow=ft.TextOverflow.ELLIPSIS,
+            max_lines=1
+        ),
         content=ft.Container(
             width=600,
             height=400,
             content=ft.Column(
                 controls=[
                     ft.Row([
-                        ft.Text("Book Summary", weight=ft.FontWeight.BOLD, size=16),
+                        ft.Text(t("book_summary", lang), weight=ft.FontWeight.BOLD, size=15, color="#1A202C"),
                         copy_btn,
                     ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
                     status_text,
                     ft.Container(
                         expand=True,
-                        padding=10,
-                        border_radius=10,
-                        border=ft.Border.all(1, "#E0E0E0"),
+                        padding=16,
+                        border_radius=16,
+                        border=ft.Border.all(1, BORDER),
+                        bgcolor="#FAF9F6", # Premium eye-comfort cream paper color
                         content=ft.ListView([summary_content], auto_scroll=False),
                     ),
                 ],
+                spacing=8,
             ),
         ),
-        actions=[ft.TextButton("Close", on_click=lambda _: page.pop_dialog())],
+        actions=[
+            ft.TextButton(
+                t("close", lang), 
+                on_click=lambda _: page.pop_dialog(),
+                style=ft.ButtonStyle(color=PRIMARY)
+            )
+        ],
         actions_alignment=ft.MainAxisAlignment.END,
     )
 
@@ -69,18 +89,19 @@ def build_book_dialog(
     page: ft.Page,
     book: Book,
     backend_adapter: BackendAdapter,
-    on_summary_saved: Callable[[str, str], None],
+    on_summary_saved: Callable[[str, str, str], None],
 ) -> ft.AlertDialog:
     """Create modal dialog for reading and summarizing selected PDF."""
-    PAGE_SIZE = 1000
+    lang = get_ui_language()
+    PAGE_SIZE = 1500
     state = {"current_page": 0, "extracted_text": ""}
 
-    text_content = ft.Text("Loading text...", selectable=True, size=13)
+    text_content = ft.Text(t("loading_text", lang), selectable=True, size=13)
     page_info = ft.Text("Page 1", weight=ft.FontWeight.BOLD, size=13)
 
     def update_text_view() -> None:
         if not state["extracted_text"]:
-            text_content.value = "No readable text found in this file."
+            text_content.value = t("no_readable_text", lang)
             page_info.value = ""
             return
 
@@ -89,7 +110,7 @@ def build_book_dialog(
         text_content.value = state["extracted_text"][start_idx:end_idx]
 
         total_pages = max(1, (len(state["extracted_text"]) + PAGE_SIZE - 1) // PAGE_SIZE)
-        page_info.value = f"Page {state['current_page'] + 1} / {total_pages}"
+        page_info.value = t("page_info", lang, state['current_page'] + 1, total_pages)
         page.update()
 
     def go_prev(_: ft.ControlEvent) -> None:
@@ -103,90 +124,111 @@ def build_book_dialog(
             state["current_page"] += 1
             update_text_view()
 
-    prev_btn = ft.IconButton(ft.Icons.ARROW_BACK, on_click=go_prev)
-    next_btn = ft.IconButton(ft.Icons.ARROW_FORWARD, on_click=go_next)
+    prev_btn = ft.IconButton(
+        ft.Icons.ARROW_BACK_IOS_NEW_ROUNDED,
+        icon_color=PRIMARY,
+        icon_size=18,
+        tooltip="Geri" if lang == "tr" else "Back",
+        on_click=go_prev
+    )
+    next_btn = ft.IconButton(
+        ft.Icons.ARROW_FORWARD_IOS_ROUNDED,
+        icon_color=PRIMARY,
+        icon_size=18,
+        tooltip="İleri" if lang == "tr" else "Next",
+        on_click=go_next
+    )
     pagination_row = ft.Row(
         [prev_btn, page_info, next_btn],
         alignment=ft.MainAxisAlignment.CENTER,
+        spacing=20,
     )
 
     is_image = Path(book.file_path).suffix.lower() in [".jpg", ".jpeg", ".png"]
 
     try:
         if is_image:
-            state["extracted_text"] = "Image content will be analyzed directly."
+            state["extracted_text"] = t("image_direct_analyze", lang) if "image_direct_analyze" in t("image_direct_analyze", lang) else "Görsel içeriği doğrudan analiz edilecektir."
         else:
             state["extracted_text"] = backend_adapter.extract_text(book.file_path)
         update_text_view()
     except Exception as error:  # pylint: disable=broad-except
         state["extracted_text"] = ""
-        text_content.value = f"File could not be read: {error}"
+        text_content.value = t("file_read_error", lang, error)
 
     summary_content = ft.Text(
-        book.summary or "Summary not generated yet.",
+        book.summary or t("summary_not_generated", lang),
         selectable=True,
         size=13,
+        color="#2D3748",
     )
+    
     summary_length = ft.RadioGroup(
         value="Medium",
         content=ft.Row(
             controls=[
-                ft.Radio(value="Short", label="Short"),
-                ft.Radio(value="Medium", label="Medium"),
-                ft.Radio(value="Long", label="Long"),
+                ft.Radio(value="Short", label=t("short", lang), active_color=PRIMARY),
+                ft.Radio(value="Medium", label=t("medium", lang), active_color=PRIMARY),
+                ft.Radio(value="Long", label=t("long", lang), active_color=PRIMARY),
             ],
-            spacing=12,
+            spacing=20,
         ),
     )
     text_coverage = ft.RadioGroup(
         value="Full",
         content=ft.Row(
             controls=[
-                ft.Radio(value="Quarter", label="Quarter"),
-                ft.Radio(value="Half", label="Half"),
-                ft.Radio(value="Full", label="Full"),
+                ft.Radio(value="Quarter", label=t("quarter", lang), active_color=PRIMARY),
+                ft.Radio(value="Half", label=t("half", lang), active_color=PRIMARY),
+                ft.Radio(value="Full", label=t("full", lang), active_color=PRIMARY),
             ],
-            spacing=12,
+            spacing=20,
         ),
     )
-    loader = ft.ProgressRing(visible=False, width=24, height=24, stroke_width=3)
-    status_text = ft.Text("", size=12, color=TEXT_SECONDARY)
+    loader = ft.ProgressRing(visible=False, width=20, height=20, stroke_width=2.5, color=PRIMARY)
+    status_text = ft.Text("", size=12, color=TEXT_SECONDARY, weight=ft.FontWeight.W_500)
 
-    summarize_btn = ft.Button(
-        "Summarize",
-        icon=ft.Icons.AUTO_AWESOME,
+    summarize_btn = ft.FilledButton(
+        t("summarize", lang),
+        icon=ft.Icons.AUTO_AWESOME_ROUNDED,
         on_click=lambda e: summarize_click(e),
+        style=ft.ButtonStyle(
+            bgcolor=PRIMARY,
+            color="white",
+            shape=ft.RoundedRectangleBorder(radius=10),
+        ),
     )
 
     def copy_summary(_: ft.ControlEvent) -> None:
         """Copy summary text to clipboard."""
         text = summary_content.value or ""
-        if text and text != "Summary not generated yet.":
+        if text and text != t("summary_not_generated", lang):
             page.set_clipboard(text)
-            status_text.value = "✓ Summary copied to clipboard!"
+            status_text.value = t("copied_clipboard", lang)
             status_text.color = SUCCESS
             page.update()
 
     copy_btn = ft.IconButton(
-        ft.Icons.COPY,
-        tooltip="Copy Summary",
+        ft.Icons.COPY_ROUNDED,
+        tooltip=t("copy_summary", lang),
         icon_size=20,
+        icon_color=PRIMARY,
         on_click=copy_summary,
     )
 
     def summarize_click(_: ft.ControlEvent) -> None:
         if not state["extracted_text"].strip():
-            status_text.value = "No text to summarize."
+            status_text.value = t("no_text_summarize", lang)
             page.update()
             return
         if not backend_adapter.available:
-            status_text.value = "Backend connection is not ready."
+            status_text.value = t("backend_not_ready", lang)
             page.update()
             return
 
         loader.visible = True
         summarize_btn.disabled = True
-        status_text.value = "Preparing summary..."
+        status_text.value = t("preparing_summary", lang)
         status_text.color = TEXT_SECONDARY
         page.update()
 
@@ -208,15 +250,15 @@ def build_book_dialog(
                     summary_content.value = result.summary
                     on_summary_saved(book.id, result.summary, summary_length.value or "Orta")
                     status_text.value = (
-                        "✓ Summary loaded from cache." if result.from_cache
-                        else "✓ Summary generated successfully."
+                        t("summary_loaded_cache", lang) if result.from_cache
+                        else t("summary_generated_success", lang)
                     )
                     status_text.color = SUCCESS
                 else:
                     status_text.value = result.message
                     status_text.color = ERROR
             except Exception as error:  # pylint: disable=broad-except
-                status_text.value = f"Summarization error: {error}"
+                status_text.value = t("summarization_error", lang, error)
                 status_text.color = ERROR
             finally:
                 loader.visible = False
@@ -227,42 +269,59 @@ def build_book_dialog(
 
     dialog = ft.AlertDialog(
         modal=True,
-        title=ft.Text(book.title, weight=ft.FontWeight.BOLD),
+        title=ft.Text(
+            book.title, 
+            weight=ft.FontWeight.BOLD, 
+            size=18, 
+            color=PRIMARY,
+            overflow=ft.TextOverflow.ELLIPSIS,
+            max_lines=1
+        ),
         content=ft.Container(
             width=600,
-            height=560,
+            height=580,
             content=ft.Column(
                 controls=[
-                    ft.Text("Book / Image Text", weight=ft.FontWeight.BOLD, size=14),
+                    ft.Text(t("book_image_text", lang), weight=ft.FontWeight.BOLD, size=14, color="#1A202C"),
                     ft.Container(
                         height=160,
-                        padding=10,
-                        border_radius=10,
-                        border=ft.Border.all(1, "#E0E0E0"),
+                        padding=12,
+                        border_radius=14,
+                        border=ft.Border.all(1, BORDER),
+                        bgcolor="#FAF9F6", # Cozy ivory reading paper bg
                         content=ft.ListView([text_content], auto_scroll=False),
                     ),
                     pagination_row,
-                    ft.Text("Summary Length", weight=ft.FontWeight.BOLD, size=14),
+                    ft.Divider(height=10, color="transparent"),
+                    ft.Text(t("summary_length", lang), weight=ft.FontWeight.BOLD, size=14, color="#1A202C"),
                     summary_length,
-                    ft.Text("Text Coverage", weight=ft.FontWeight.BOLD, size=14),
-                    ft.Row([text_coverage, summarize_btn, loader]),
+                    ft.Text(t("text_coverage", lang), weight=ft.FontWeight.BOLD, size=14, color="#1A202C"),
+                    ft.Row([text_coverage, summarize_btn, loader], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
                     status_text,
                     ft.Row([
-                        ft.Text("Summary", weight=ft.FontWeight.BOLD, size=14),
+                        ft.Text(t("book_summary", lang), weight=ft.FontWeight.BOLD, size=14, color="#1A202C"),
                         copy_btn,
                     ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
                     ft.Container(
                         height=160,
-                        padding=10,
-                        border_radius=10,
-                        border=ft.Border.all(1, "#E0E0E0"),
+                        padding=12,
+                        border_radius=14,
+                        border=ft.Border.all(1, BORDER),
+                        bgcolor="#FAF9F6", # Cozy ivory reading paper bg
                         content=ft.ListView([summary_content], auto_scroll=False),
                     ),
                 ],
                 scroll=ft.ScrollMode.AUTO,
+                spacing=10,
             ),
         ),
-        actions=[ft.TextButton("Close", on_click=lambda _: page.pop_dialog())],
+        actions=[
+            ft.TextButton(
+                t("close", lang), 
+                on_click=lambda _: page.pop_dialog(),
+                style=ft.ButtonStyle(color=PRIMARY)
+            )
+        ],
         actions_alignment=ft.MainAxisAlignment.END,
     )
     return dialog
