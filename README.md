@@ -1,120 +1,215 @@
-# 📘 SnapSum: Proje Dökümantasyonu ve Sistem Rehberi
+# 📘 SnapSum — Premium Intelligent Document Summarizer & Reading Companion
 
-**SnapSum**, kullanıcıların dökümanlarını (PDF, TXT, PNG, JPG, JPEG) yapay zeka desteğiyle özetleyebildiği, görsel/OCR analizi alabildiği, Türkçe ve İngilizce çift dil desteği sunan ve okuma geçmişine dayalı kişiselleştirilmiş kitap önerileri sunan reaktif mobil ve masaüstü uygulamasıdır.
-
----
-
-## 1. 🚀 Proje Hakkında Genel Bakış
-
-SnapSum, bilgi yoğun çağımızda metinlerin hızlı ve etkili şekilde analiz edilip özetlenmesini sağlar. **Mistral AI API** modellerini kullanarak kitapları ve dökümanları akıllıca parçalar (Chunking & Map-Reduce), kullanıcı tercihlerine göre farklı uzunluklarda ve dillerde özetler üretir.
-
-### 🎯 Temel Hedefler
-- **Hızlı Anlamlandırma:** Büyük PDF ve TXT belgelerini saniyeler içerisinde özetleyerek zamandan tasarruf ettirmek.
-- **Pixtral Görsel Özetleme (OCR):** Kitap kapakları veya sayfalarının fotoğraflarını çekip yapay zekayla doğrudan OCR analizi yaparak özetlemek.
-- **Okur Karakteri Analizi:** Okuma geçmişine ve kitap türlerine göre kullanıcıya dinamik profiller atamak.
-- **Kişiselleştirilmiş Öneriler:** Kullanıcının okur profiline uygun yapay zeka destekli kitap önerileri sunmak.
-- **Minimalist ve Premium Arayüz:** Indigo, Rose ve Slate renk tonlarıyla tasarlanmış, göz yormayan Cozy Cream Paper okuma zeminli Material 3 arayüzü.
-
-### ⚙️ Teknik Özellikler
-- **📄 PDF ve TXT Özetleme:** Dosya gezgininden yüklenen veya yerleşik kütüphanedeki dökümanlardan gürültüsüz metin ayıklama ve özetleme.
-- **📷 Görsel & OCR Analizi:** Pixtral Vision API ile doğrudan resim dosyalarının çözümlenmesi.
-- **📚 SQLite Kütüphane Yönetimi:** SQLite3 kalıcı veritabanı sayesinde kitaplar ve özetler yerel olarak saklanır.
-- **✂️ Akıllı Map-Reduce Özetleme:** Kısa, Orta ve Uzun seçenekleriyle ayarlanabilir asenkron özet yapısı.
-- **🧠 Okur Karakteri Analizi:** Kullanıcının okuduğu kitap kategorilerine dayalı profil oluşturma.
-- **🌐 Çift Dil Desteği:** Türkçe ve İngilizce dilleri arasında dinamik arayüz geçişleri.
+<p align="center">
+  <img src="https://img.shields.io/badge/Python-3.10%2B-blue?style=for-the-badge&logo=python&logoColor=white" alt="Python Version" />
+  <img src="https://img.shields.io/badge/Flet-v0.84%2B-orange?style=for-the-badge&logo=flutter&logoColor=white" alt="Flet GUI Framework" />
+  <img src="https://img.shields.io/badge/Mistral%20AI-API-green?style=for-the-badge&logo=ai&logoColor=white" alt="Mistral AI" />
+  <img src="https://img.shields.io/badge/SQLite-3-red?style=for-the-badge&logo=sqlite&logoColor=white" alt="SQLite Database" />
+  <img src="https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge&logo=mit&logoColor=white" alt="MIT License" />
+</p>
 
 ---
 
-## 2. 👥 Görev Dağılımı ve Sorumluluklar
+## 🌟 Overview
 
-SnapSum projesinde ekip üyelerinin üstlendiği temel roller ve sorumluluklar aşağıda detaylandırılmıştır. Tüm roller başarıyla koordine edilmiş ve kararlı sürüm bu görev dağılımına uygun şekilde tamamlanmıştır.
+**SnapSum** is an exquisite, reactive cross-platform mobile and desktop application that redefines how you consume written knowledge. Powered by state-of-the-art **Mistral AI** language models and **Pixtral Vision** OCR intelligence, SnapSum extracts, cleans, and summarizes dense academic or literary documents (`.pdf`, `.txt`, `.png`, `.jpg`, `.jpeg`) into clean, actionable insights. 
 
-- **İbrahim (Backend Dev):** Yapay Zeka entegrasyonu (Mistral API), Chunking & Map-Reduce algoritması tasarımı, prompt mühendisliği ve PDF/Metin temizleme mantığı (`backend_manager.py`).
-- **Baran (Veritabanı & API):** Uygulama verilerinin SQLite üzerinde yönetimi (`DatabaseManager`), kütüphane ekleme/silme fonksiyonları ve API key konfigürasyonu.
-- **Elif (Mobil Dev):** Flet framework ile uygulamanın mobil/masaüstü reaktif arayüzünün (Library, Upload, Profile sekmeleri) geliştirilmesi, dosya gezgini entegrasyonu ve uygulamanın genel UI navigasyonu (`main.py` ve bileşenler).
-- **Sinem (UI/UX):** Uygulamanın renk paletleri, bileşenlerin konumlandırmaları, kart tasarımları ve genel kullanıcı deneyiminin planlanması.
-- **Fatma (Veri İşleme & Test):** Hazır kütüphanede (`cleaned_texts`) bulunacak kitap metinlerinin hazırlanmesi, temizlenmesi ve sistemin farklı dosya türleri/büyüklükleriyle test edilmesi.
+Featuring a premium **Material 3** user interface themed around harmonious HSL colors (Indigo, Rose, Slate) and a comfortable **Cozy Cream Paper** reading environment, SnapSum is built to reduce cognitive fatigue while maximizing reading productivity.
 
 ---
 
-## 3. 🏗️ Teknik Mimari ve Çalışma Mantığı
+## 🚀 Key Features
 
-### 🧠 Backend (Yapay Zeka & İş Mantığı)
-- **Metin Normalizasyonu:** PDF/TXTs dosyasından okunan metindeki sayfa numaraları, boşluk artıkları ve tablo çizgileri regex yardımıyla temizlenerek normalize edilir.
-- **Paragraf-Duyarlı Chunking:** Metinler 5000-8000 karakterlik parçalara bölünürken paragraf bütünlüğü korunur.
-- **Map-Reduce Özetleme:** Mistral `mistral-small-latest` (metinler için) ve `pixtral-large-latest` (görsel/OCR için) API'leri ile asenkron Map-Reduce mekanizmasıyla çalışır.
-- **Önbellek (Cache):** SHA-256 hash tabanlı `summary_cache.json` ve SQLite tabanlı önbellekleme sayesinde mükerrer API istekleri engellenir.
-- **Güvenlik Katmanı (`api_security.py`):** Girdi doğrulayıcı, rate limiter, audit günlüğü ve API key maskeleme güvenliği sağlar.
-
-### 📱 Mobil (Flet Frontend)
-- **Flet Framework:** Python ile asenkron tabanlı reaktif mobil/masaüstü ön yüz arayüzü sağlar.
-- **Asenkron FilePicker:** Flet v0.84+ standartlarına uygun, inline `await file_picker.pick_files()` asenkron yapısıyla çökmeyen, kararlı dosya seçimi sunar.
-
-### 🏗️ Teknoloji Yığını
-- **UI:** Flet v0.84.0+ (Python)
-- **Backend:** Python 3.10+
-- **AI/NLP:** Mistral AI API (mistral-small-latest / pixtral-large-latest)
-- **Parsing:** PyMuPDF (fitz) / UTF-8 Plain TXT reader
-- **Depolama:** SQLite3 (`snapsum.db`) / JSON Cache
+*   **📄 Seamless PDF & TXT Summarization:** Fast and quiet text extraction using custom regex normalizers to eliminate page numbers, dividers, and headers before parsing.
+*   **📸 Vision OCR with Pixtral:** Take photos or upload images of book covers or text pages; Pixtral Vision extracts text and generates context-aware summaries instantly.
+*   **✂️ Paragraph-Aware Smart Chunking:** Long documents are segmented dynamically (5K-8K characters) while preserving paragraph integrity (`\n\n`), preventing content truncation.
+*   **🔄 Asynchronous Map-Reduce Summarization:** Processes large volumes of text by running individual segment summaries (**MAP**) and recursively combining them into a cohesive master summary (**REDUCE**).
+*   **💾 Double-Layer SQLite & JSON Caching:** Saves API costs and enables offline reading by caching summaries inside both a high-speed SHA-256 local JSON cache and a structured SQLite database.
+*   **🧠 Reader Character Analytics:** Automatically analyzes your reading history categories (Science, History, Drama, Adventure, Philosophy, General) and assigns a custom archetype (e.g., *🔬 Sci-Fi Explorer*, *🧠 Thought Architect*).
+*   **📚 Personalized Recommendations:** Generates bespoke book recommendations tailored exactly to your reading archetype using direct Mistral suggestions.
+*   **🌐 Real-Time Bilingual Interface:** Dynamically switch the entire user interface and AI summary outputs between Turkish and English on the fly.
 
 ---
 
-## 4. 📅 Tamamlanan Yol Haritası ve Geliştirmeler
+## 🏗️ Technical Architecture & Data Flow
 
-Tüm geliştirmeler başarıyla tamamlanmış ve kararlı sürüme entegre edilmiştir:
-- **SQLite Yerel Depolama Entegrasyonu (%100):** Tüm veriler `snapsum.db` üzerinde kalıcıdır.
-- **Dinamik Okur Karakteri & Öneri Sistemi (%100):** Kullanıcı okuma geçmişine dayalı karakter profilleri ve yapay zeka kitap önerileri.
-- **OCR & Pixtral Görsel Desteği (%100):** PNG, JPG ve JPEG dosyalarından doğrudan OCR ile yapay zekalı görsel özetleme.
-- **Türkçe & İngilizce Çift Dil Desteği (%100):** Tüm arayüz ve özetler iki dilde dinamik çalışmaktadır.
-- **Premium UI Temalandırma (%100):** Indigo, Rose ve Slate Material 3 tasarımları ve Cozy Cream Paper okuyucu ekranı.
+SnapSum is designed with a highly modular, layered architecture to maintain complete separation between the UI presentation and background intelligence:
+
+```mermaid
+graph TD
+    A[Flet Reactive GUI] <-->|Dynamic Bridge| B(Backend Adapter)
+    B <-->|In-Process Delegation| C[Backend Manager Core]
+    C -->|1. Validation & Safety| D(API Security Module)
+    C -->|2. Fast Cache Check| E[(SQLite DB / JSON Cache)]
+    C -->|3. OCR & Parsing| F[PyMuPDF / Plain Reader]
+    C -->|4. AI Map-Reduce| G[Mistral AI HTTP REST API]
+    
+    subgraph Storage Layer
+        E
+    end
+    
+    subgraph Business Logic Layer
+        C
+        D
+        F
+    end
+    
+    subgraph Presentation Layer
+        A
+        B
+    end
+```
+
+### The Summarization Sequence:
+1.  **Request Initiation:** The user selects a book, adjusts the summary length (Short, Medium, Long), and clicks *Summarize*.
+2.  **Security Firewall:** `api_security.py` runs symbolic link audits, file size caps (max 50MB), path traversal validations, and masks critical API keys.
+3.  **Local Cache Lookup:** System checks if the hash of `(File Path + Length + Model + Coverage)` exists in `summary_cache.json` or `snapsum.db`. If found (Cache Hit), it renders the summary instantly without calling the API.
+4.  **Parsing & Chunking:** In case of a Cache Miss, PyMuPDF parses the document. The text is normalized and sliced into paragraph-aware chunks.
+5.  **Map-Reduce Execution:** Chunks are summarized concurrently/sequentially using `mistral-small-latest` (or `pixtral-large-latest` for images). The generated segment summaries are compiled into a final cohesive Master Summary.
+6.  **Persistence:** The new summary is persisted in SQLite and cached in JSON for future instantaneous retrievals.
 
 ---
 
-## 📁 Proje Yapısı
+## 🛠️ Technology Stack
+
+| Component | Technology | Description |
+| :--- | :--- | :--- |
+| **Frontend UI** | [Flet v0.84.0+](https://flet.dev) | Python-based reactive UI framework matching Flutter's standards. |
+| **Language & Core** | Python 3.10+ | Modularity, custom regex normalizers, asynchronous loops. |
+| **AI Summarization** | Mistral AI API | `mistral-small-latest` for high-fidelity multi-stage text processing. |
+| **Vision OCR** | Pixtral Vision | `pixtral-large-latest` for multimodal document & image parsing. |
+| **PDF Extraction** | PyMuPDF (fitz) | Lightning-fast PDF text layout parser. |
+| **Local Database** | SQLite3 | Stores general/personal libraries, reading history, and profiles. |
+| **Security Layer** | Custom Firewall | Rate limiter, Path Traversal defense, API key validators. |
+
+---
+
+## 📁 Repository Structure
 
 ```text
 SnapSum/
-├── backend/            # API, AI, Güvenlik ve Veri İşleme mantığı
-│   ├── database/       # JSON Önbellek dosyaları
-│   ├── recommendation/ # Okur karakteri analiz motoru
-│   └── api_security.py # Güvenlik katmanı
-├── mobile/             # Flet mobil/masaüstü arayüz kodları
-│   ├── app/            # SQLite, modeller, temalar ve servisler
-│   └── main.py         # Giriş noktası ve yönlendirici
-├── data/               # SQLite veritabanı (snapsum.db) ve yüklenen dosyalar
-├── library/            # Hazır kütüphane kaynakları ve PDF'ler
-├── cleaned_texts/      # Fatma tarafından hazırlanan 18 adet düz metin kitap dosyası
-├── docs/               # Sistem dökümantasyon dosyaları
-├── tests/              # Birim test dosyaları
-└── README.md           # Ana dökümantasyon dosyası (Bu dosya)
+├── backend/                  # AI, NLP, Security and Data Processing Engine
+│   ├── database/             # JSON cache directory
+│   │   └── summary_cache.json# Local SHA-256 API cache file
+│   ├── recommendation/       # Algorithmic reader archetype & profiling engine
+│   ├── logs/                 # Security logs and access audits
+│   └── api_security.py       # Input validation, Rate Limiting, API Key masking
+│
+├── mobile/                   # Flet Multiplatform Frontend
+│   ├── main.py               # Main app entry, tab router & seed manager
+│   ├── app/                  # Application Layer
+│   │   ├── config.py         # Global configs, system settings & credentials
+│   │   ├── models.py         # Standardized Dataclasses (Book, Profile, etc.)
+│   │   ├── data/             # SQLite Data Access Layer (database.py, repository.py)
+│   │   ├── services/         # Async sys.path dynamic imports (backend_adapter.py)
+│   │   └── ui/               # Custom UI Components (theme.py, book_detail_view.py)
+│   └── assets/               # Local icons, vectors, and visuals
+│
+├── library/                  # Preloaded Default PDF Library Files
+├── cleaned_texts/            # 18 Preloaded curated plain text (.txt) classic novels
+├── data/                     # Persistent SQLite DB (snapsum.db) & Upload folder
+├── docs/                     # Detailed Turkish system architectural documentation
+├── tests/                    # Robust unit test suites
+└── README.md                 # Primary English guide (This file)
 ```
 
 ---
 
-## 🧪 Kurulum ve Çalıştırma
+## 🧪 Installation & Running Guide
 
-1. **Depoyu klonlayın:**
-   ```bash
-   git clone https://github.com/elifzehraunal/SnapSum
-   cd SnapSum
-   ```
+Follow these precise steps to set up and run SnapSum locally on your machine:
 
-2. **Gerekli kütüphaneleri yükleyin:**
-   ```bash
-   pip install -r requirements.txt
-   ```
+### 1. Clone the Repository
+```bash
+git clone https://github.com/elifzehraunal/SnapSum.git
+cd SnapSum
+```
 
-3. **Çevresel değişkenleri hazırlayın:**
-   Kök dizinde `.env` dosyası oluşturun ve Mistral API anahtarınızı tanımlayın:
-   ```env
-   MISTRAL_API_KEY=your_api_key_here
-   ```
+### 2. Set Up a Virtual Environment (Highly Recommended)
+On Windows:
+```powershell
+python -m venv .venv
+.venv\Scripts\activate
+```
+On macOS/Linux:
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+```
 
-4. **Uygulamayı çalıştırın:**
-   ```bash
-   python mobile/main.py
-   ```
+### 3. Install Python Dependencies
+```bash
+pip install --upgrade pip
+pip install -r requirements.txt
+```
+
+### 4. Configure Environmental Variables
+Create a file named `.env` in the root folder of the project and add your Mistral API Key:
+```env
+MISTRAL_API_KEY=your_actual_mistral_api_key_here
+```
+> **Pro Tip:** You can also configure the API Key directly inside the app's Settings panel, which writes to `data/settings.json` locally and keeps your key perfectly secure.
+
+### 5. Launch the Application
+Start the multi-platform reactive Flet GUI:
+```bash
+python mobile/main.py
+```
 
 ---
 
-> **Not:** Veritabanı ve tüm asenkron Mistral entegrasyonu tamamen kurulmuştur. Uygulama, hem API üzerinden canlı özet alabilmekte hem de yerel SQLite ve JSON önbelleği sayesinde internet olmasa dahi daha önce özetlenen tüm kitapları anında listeleyip okutabilmektedir.
+## 🛡️ Robust Security Layer
+
+SnapSum implements strict developer-first security designs in `api_security.py`:
+*   **Path Traversal & Symlink Defense:** Stops malicious file payloads from escaping the target storage directories.
+*   **API Key Masking:** Automatically redacts API keys in system logs (e.g., `MISTRAL_API_KEY: MSTR****k92r`).
+*   **Token-Bucket Rate Limiter:** Restricts high-frequency queries to a safe limit of 10 requests per minute per instance.
+*   **XSS Input Sanitization:** Safely strips HTML/Script tags from titles, descriptions, and user custom inputs to prevent injection attacks.
+
+---
+
+## 👥 Meet the Core Team
+
+SnapSum was successfully delivered through the coordinated, high-performing collaboration of our 5 core members:
+
+<table align="center">
+  <tr>
+    <td align="center" width="20%">
+      <img src="https://img.shields.io/badge/Backend-İbrahim-blue?style=flat-square&logo=git" alt="İbrahim" /><br/>
+      <b>İbrahim</b><br/>
+      <small>AI Integration, Chunking & Map-Reduce, Regex Normalizer</small>
+    </td>
+    <td align="center" width="20%">
+      <img src="https://img.shields.io/badge/Database-Baran-red?style=flat-square&logo=sqlite" alt="Baran" /><br/>
+      <b>Baran</b><br/>
+      <small>SQLite Schemas, JSON Cache, settings.json Configuration</small>
+    </td>
+    <td align="center" width="20%">
+      <img src="https://img.shields.io/badge/Frontend-Elif-orange?style=flat-square&logo=flutter" alt="Elif" /><br/>
+      <b>Elif</b><br/>
+      <small>Flet Reactive App Screens, Asynchronous FilePicker, Tab Routing</small>
+    </td>
+    <td align="center" width="20%">
+      <img src="https://img.shields.io/badge/UI--UX-Sinem-pink?style=flat-square&logo=figma" alt="Sinem" /><br/>
+      <b>Sinem</b><br/>
+      <small>Material 3 HSL Theme Colors, Cozy Cream Paper, Component Layouts</small>
+    </td>
+    <td align="center" width="20%">
+      <img src="https://img.shields.io/badge/Quality-Fatma-green?style=flat-square&logo=pytest" alt="Fatma" /><br/>
+      <b>Fatma</b><br/>
+      <small>General Library Text Preparation, PDF Scrubbing, Edge-Case Testing</small>
+    </td>
+  </tr>
+</table>
+
+---
+
+## 📄 License
+
+This project is licensed under the MIT License — see the [LICENSE](file:///c:/Users/ibrah/Documents/GitHub/SnapSum/LICENSE) file for complete details.
+
+---
+
+<p align="center">
+  Designed with ❤️ by the SnapSum Team.
+</p>
